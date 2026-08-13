@@ -136,6 +136,19 @@ input,select,textarea{ font: inherit; color: inherit; }
 }
 .icon-btn:hover{ background: var(--surface-3); }
 
+.syncchip{
+  display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600;
+  background: var(--surface-2); border:1px solid var(--line); border-radius:20px;
+  padding:4px 11px; white-space:nowrap; color: var(--ink-2); cursor:default;
+}
+.syncchip i{ width:8px; height:8px; border-radius:50%; background: var(--line-strong); flex:none; }
+.syncchip[data-s="synced"] i{ background: var(--c-done); }
+.syncchip[data-s="saving"] i,
+.syncchip[data-s="connecting"] i{ background: var(--c-buy); animation: pulse 1.3s ease-in-out infinite; }
+.syncchip[data-s="offline"] i{ background: var(--c-home); }
+.syncchip[data-s="error"] i{ background: var(--c-alert); }
+@keyframes pulse{ 50%{ opacity:.25; } }
+
 /* budget scale bar */
 .scalebar{ padding-bottom: 12px; }
 .sb-track{
@@ -481,6 +494,11 @@ footer.sheet .row .push{ margin-inline-start:auto; }
         <input type="number" id="budget" min="0" step="1000">
       </div>
 
+      <div class="tb-field">
+        <label>סנכרון</label>
+        <span class="syncchip" id="syncChip" data-s="local"><i></i><span class="lbl">מקומי בלבד</span></span>
+      </div>
+
       <button class="icon-btn" id="themeBtn" title="החלפת מצב תצוגה" aria-label="החלפת מצב תצוגה">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>
@@ -596,6 +614,7 @@ footer.sheet .row .push{ margin-inline-start:auto; }
 
 <footer class="sheet">
   <div class="wrap row">
+    <button class="btn ghost sm" id="shareBtn" hidden>העתקת קישור לשיתוף</button>
     <button class="btn ghost sm" id="exportBtn">גיבוי לקובץ</button>
     <button class="btn ghost sm" id="codeBtn">קוד סנכרון</button>
     <button class="btn ghost sm" id="importBtn">ייבוא</button>
@@ -775,6 +794,20 @@ const STATUS = {
 };
 
 /* ============================================================
+   CLOUD SYNC — paste your Firebase config below to turn it on.
+   Leave FIREBASE_CONFIG as null and the app runs purely locally
+   on this browser, exactly as before.
+   ============================================================ */
+const FIREBASE_CONFIG = null;
+/* Optional: the version shown in your Firebase console snippet,
+   e.g. "12.1.0". Leave empty and the loader probes known versions. */
+const FIREBASE_SDK_VERSION = "";
+const SDK_CANDIDATES = ["12.4.0","12.1.0","12.0.0","11.10.0","11.6.1","11.0.2","10.14.1"];
+
+const hasCloudConfig = () =>
+  !!(FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
+
+/* ============================================================
    STATE
    ============================================================ */
 const KEY = "newhome.plan.v1";
@@ -811,6 +844,7 @@ function load(){
 }
 let saveTimer = null;
 function save(){
+  if (Cloud.on) return;                 // in cloud mode Firestore owns the data
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{
     try{
@@ -821,6 +855,203 @@ function save(){
       $("#savedAt").textContent = "השמירה נכשלה — ייצא גיבוי";
     }
   }, 250);
+}
+
+/* ============================================================
+   CLOUD — Firestore, one document per item so that two people
+   editing different items never overwrite each other.
+   ============================================================ */
+const Cloud = {
+  on:false, F:null, db:null, homeId:null, homeRef:null, itemsRef:null,
+  status:"local", seeded:false, firstSnap:false,
+
+  async init(){
+    setStatus("connecting");
+    try{
+      const { A, AU, F } = await this.loadSdk();
+      this.F = F;
+      const app  = A.initializeApp(FIREBASE_CONFIG);
+      const auth = AU.getAuth(app);
+      await AU.signInAnonymously(auth);
+
+      this.db = F.initializeFirestore(app, {
+        localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() })
+      });
+
+      this.homeId   = this.resolveHomeId();
+      this.homeRef  = F.doc(this.db, "homes", this.homeId);
+      this.itemsRef = F.collection(this.db, "homes", this.homeId, "items");
+      this.on = true;
+
+      const existing = await F.getDoc(this.homeRef);
+      if (!existing.exists()) await this.seed();
+
+      this.listen();
+    }catch(err){
+      this.on = false;
+      setStatus("error", err && err.message);
+    }
+  },
+
+  async loadSdk(){
+    const versions = FIREBASE_SDK_VERSION
+      ? [FIREBASE_SDK_VERSION, ...SDK_CANDIDATES]
+      : SDK_CANDIDATES;
+    let last;
+    for (const v of versions){
+      try{
+        const base = "https://www.gstatic.com/firebasejs/" + v;
+        const [A, AU, F] = await Promise.all([
+          import(base + "/firebase-app.js"),
+          import(base + "/firebase-auth.js"),
+          import(base + "/firebase-firestore.js")
+        ]);
+        return { A, AU, F };
+      }catch(e){ last = e; }
+    }
+    throw new Error("לא הצלחתי לטעון את ה־SDK של Firebase. עדכן את FIREBASE_SDK_VERSION.");
+  },
+
+  /* The home id lives in the URL. The link is the credential. */
+  resolveHomeId(){
+    const m = location.hash.match(/[#&]h=([A-Za-z0-9]{20,})/);
+    if (m) return m[1];
+    const bytes = new Uint8Array(18);
+    crypto.getRandomValues(bytes);
+    const id = Array.from(bytes, b=>b.toString(36).padStart(2,"0")).join("").slice(0,24);
+    history.replaceState(null, "", location.pathname + location.search + "#h=" + id);
+    return id;
+  },
+
+  async seed(){
+    const F = this.F, fresh = seedState();
+    await F.setDoc(this.homeRef, {
+      moveIn: fresh.moveIn, budget: fresh.budget,
+      roomBudgets: fresh.roomBudgets, seq: fresh.seq,
+      createdAt: F.serverTimestamp(), updatedAt: F.serverTimestamp()
+    });
+    /* Seed ids are deterministic, so two devices opening the same fresh
+       link converge on the same documents instead of duplicating. */
+    for (let i=0; i<fresh.items.length; i+=400){
+      const batch = F.writeBatch(this.db);
+      for (const it of fresh.items.slice(i, i+400)) batch.set(F.doc(this.itemsRef, it.id), it);
+      await batch.commit();
+    }
+    this.seeded = true;
+  },
+
+  listen(){
+    const F = this.F, opts = { includeMetadataChanges:true };
+
+    F.onSnapshot(this.homeRef, opts, s=>{
+      const d = s.data();
+      if (d){
+        if (typeof d.moveIn === "string") state.moveIn = d.moveIn;
+        if (Number.isFinite(+d.budget))   state.budget = +d.budget;
+        if (d.roomBudgets) state.roomBudgets = Object.assign({}, state.roomBudgets, d.roomBudgets);
+        if (+d.seq > (state.seq||0)) state.seq = +d.seq;
+      }
+      this.flag(s.metadata);
+      renderAll();
+    }, e=> setStatus("error", e.message));
+
+    F.onSnapshot(this.itemsRef, opts, s=>{
+      const items = [];
+      s.forEach(doc=>{
+        const d = doc.data();
+        if (d && ROOM_BY_ID[d.room]) items.push({
+          id: doc.id, room: d.room, name: String(d.name||"פריט"),
+          est: Math.max(0, +d.est||0),
+          actual: d.actual==null ? null : Math.max(0, +d.actual||0),
+          status: STATUS[d.status] ? d.status : "buy",
+          lead: Math.min(52, Math.max(0, +d.lead||2)),
+          store: String(d.store||"")
+        });
+      });
+      const order = Object.fromEntries(ROOMS.map((r,ix)=>[r.id,ix]));
+      items.sort((a,b)=> order[a.room]-order[b.room] || a.id.localeCompare(b.id, "en", {numeric:true}));
+      state.items = items;
+      this.firstSnap = true;
+      this.flag(s.metadata);
+      renderAll();
+    }, e=> setStatus("error", e.message));
+  },
+
+  flag(meta){
+    setStatus(meta.hasPendingWrites ? "saving" : (meta.fromCache ? "offline" : "synced"));
+  },
+
+  /* Firestore writes reject asynchronously (a rules denial, say), so every
+     write goes through here rather than relying on a surrounding try/catch. */
+  guard(p){
+    return Promise.resolve(p).catch(e=>{
+      setStatus("error", e && e.message);
+      toast("השינוי לא נשמר בענן: " + (e && e.code ? e.code : "שגיאה"));
+    });
+  },
+
+  apply(ch){
+    if (!this.on || !ch) return;
+    const F = this.F;
+    try{
+      if (ch.item) this.putItem(ch.item);
+      else if (ch.add) this.putItem(ch.add);
+      else if (ch.del) this.guard(F.deleteDoc(F.doc(this.itemsRef, ch.del)));
+      else if (ch.home) this.guard(F.setDoc(this.homeRef, Object.assign({}, ch.home, { updatedAt: F.serverTimestamp() }), { merge:true }));
+      else if (ch.bulk) this.guard(this.replaceAll());
+    }catch(e){ setStatus("error", e.message); }
+  },
+
+  putItem(it){
+    const F = this.F;
+    this.guard(F.setDoc(F.doc(this.itemsRef, it.id), {
+      room:it.room, name:it.name, est:it.est, actual:it.actual,
+      status:it.status, lead:it.lead, store:it.store, updatedAt:F.serverTimestamp()
+    }, { merge:true }));
+  },
+
+  async replaceAll(){
+    const F = this.F;
+    const snap = await F.getDocs(this.itemsRef);
+    const keep = new Set(state.items.map(i=>i.id));
+    let batch = F.writeBatch(this.db), n = 0;
+    const flush = async ()=>{ if (n){ await batch.commit(); batch = F.writeBatch(this.db); n = 0; } };
+    snap.forEach(d=>{ if (!keep.has(d.id)){ batch.delete(d.ref); n++; } });
+    await flush();
+    for (const it of state.items){
+      batch.set(F.doc(this.itemsRef, it.id), {
+        room:it.room, name:it.name, est:it.est, actual:it.actual,
+        status:it.status, lead:it.lead, store:it.store
+      });
+      if (++n >= 400) await flush();
+    }
+    await flush();
+    F.setDoc(this.homeRef, {
+      moveIn: state.moveIn, budget: state.budget,
+      roomBudgets: state.roomBudgets, seq: state.seq, updatedAt: F.serverTimestamp()
+    }, { merge:true });
+  },
+
+  shareLink(){ return location.origin + location.pathname + "#h=" + this.homeId; }
+};
+
+const STATUS_TEXT = {
+  local:      ["מקומי בלבד",  "הנתונים נשמרים רק בדפדפן הזה"],
+  connecting: ["מתחבר…",      "מתחבר לסנכרון"],
+  synced:     ["מסונכרן",     "כל השינויים מעודכנים אצל שניכם"],
+  saving:     ["שומר…",       "השינוי בדרך לענן"],
+  offline:    ["לא מקוון",    "השינויים נשמרים ויסתנכרנו כשתחזור הקליטה"],
+  error:      ["הסנכרון נכשל","ממשיך לעבוד מקומית"]
+};
+function setStatus(s, detail){
+  Cloud.status = s;
+  const el = $("#syncChip");
+  if (!el) return;
+  const [label, note] = STATUS_TEXT[s] || STATUS_TEXT.local;
+  el.dataset.s = s;
+  el.querySelector(".lbl").textContent = label;
+  el.title = detail ? note + " — " + detail : note;
+  $("#shareBtn").hidden = !Cloud.on;
 }
 
 /* ============================================================
@@ -1132,7 +1363,7 @@ function wireItems(){
         else if (f==="actual") it.actual = inp.value === "" ? null : Math.max(0, +inp.value||0);
         else if (f==="lead")   it.lead = Math.min(52, Math.max(0, +inp.value||0));
         else                   it.est = Math.max(0, +inp.value||0);
-        commit();
+        commit({ item: it });
       });
     });
 
@@ -1140,13 +1371,13 @@ function wireItems(){
       btn.addEventListener("click", ()=>{
         it.status = btn.dataset.s;
         if (it.status==="done" && it.actual==null) it.actual = it.est;
-        commit();
+        commit({ item: it });
       });
     });
 
     $(".item-del", el).addEventListener("click", ()=>{
       state.items = state.items.filter(x=>x.id!==id);
-      commit();
+      commit({ del: id });
       toast("הפריט נמחק");
     });
   });
@@ -1329,16 +1560,21 @@ function renderAll(){
   renderMoney();
   if (uiRoom) renderDrawer();
 }
-function commit(){ save(); renderAll(); }
+function commit(change){ Cloud.apply(change); save(); renderAll(); }
 
 /* ============================================================
    EVENTS
    ============================================================ */
-$("#moveIn").addEventListener("change", e=>{ state.moveIn = e.target.value; commit(); });
-$("#budget").addEventListener("change", e=>{ state.budget = Math.max(0, +e.target.value||0); commit(); });
+$("#moveIn").addEventListener("change", e=>{
+  state.moveIn = e.target.value; commit({ home:{ moveIn: state.moveIn } });
+});
+$("#budget").addEventListener("change", e=>{
+  state.budget = Math.max(0, +e.target.value||0); commit({ home:{ budget: state.budget } });
+});
 $("#drBudget").addEventListener("change", e=>{
   if (!uiRoom) return;
-  state.roomBudgets[uiRoom] = Math.max(0, +e.target.value||0); commit();
+  state.roomBudgets[uiRoom] = Math.max(0, +e.target.value||0);
+  commit({ home:{ roomBudgets: state.roomBudgets } });
 });
 
 $("#scrim").addEventListener("click", closeDrawer);
@@ -1348,8 +1584,9 @@ document.addEventListener("keydown", e=>{ if (e.key==="Escape"){ closeDrawer(); 
 $("#addItem").addEventListener("click", ()=>{
   if (!uiRoom) return;
   state.seq = (state.seq||0)+1;
-  state.items.push({ id:"i"+state.seq+"_"+Date.now().toString(36), room:uiRoom, name:"פריט חדש", est:0, actual:null, status:"buy", lead:2, store:"" });
-  commit();
+  const fresh = { id:"i"+state.seq+"_"+Date.now().toString(36), room:uiRoom, name:"פריט חדש", est:0, actual:null, status:"buy", lead:2, store:"" };
+  state.items.push(fresh);
+  commit({ add: fresh });
   const rows = $$("#drBody .item");
   const last = rows[rows.length-1];
   if (last){ last.scrollIntoView({ block:"nearest" }); const inp = $(".item-name", last); inp.focus(); inp.select(); }
@@ -1357,7 +1594,7 @@ $("#addItem").addEventListener("click", ()=>{
 $("#allHome").addEventListener("click", ()=>{
   if (!uiRoom) return;
   roomItems(uiRoom).forEach(i=>{ i.status = "home"; });
-  commit(); toast("כל פריטי החדר סומנו כלוקחים מהבית");
+  commit({ bulk:true }); toast("כל פריטי החדר סומנו כלוקחים מהבית");
 });
 
 $$(".tab").forEach(tab=>{
@@ -1425,7 +1662,7 @@ $("#importBtn").addEventListener("click", ()=>{
     state = normalize(s);
     uiRoom = null; closeDrawer();
     $("#modal").classList.remove("on");
-    commit(); toast("הרשימה יובאה");
+    commit({ bulk:true }); toast("הרשימה יובאה");
   };
   $("#modal").classList.add("on");
   setTimeout(()=> $("#mText").focus(), 60);
@@ -1448,7 +1685,7 @@ $("#resetBtn").addEventListener("click", e=>{
   }
   clearTimeout(resetTimer);
   resetArmed = false; btn.textContent = "איפוס לרשימה המקורית"; btn.style.color = "";
-  state = seedState(); uiRoom = null; closeDrawer(); commit(); toast("הרשימה אופסה");
+  state = seedState(); uiRoom = null; closeDrawer(); commit({ bulk:true }); toast("הרשימה אופסה");
 });
 
 /* ============================================================
@@ -1473,9 +1710,20 @@ function normalize(s){
   return out;
 }
 
+$("#shareBtn").addEventListener("click", async ()=>{
+  const ok = await copyText(Cloud.shareLink());
+  toast(ok ? "הקישור הועתק — שלח אותו והנתונים יהיו משותפים" : "העתק את הכתובת משורת הכתובת");
+});
+
 state = normalize(load());
 renderRoomFilter();
 renderAll();
-save();
+
+if (hasCloudConfig()){
+  Cloud.init();
+}else{
+  setStatus("local");
+  save();
+}
 })();
 </script>
