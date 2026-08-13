@@ -239,43 +239,7 @@ input,select{ font:inherit; color:inherit; }
   font-size:14px; font-weight:700; font-variant-numeric:tabular-nums;
 }
 
-/* ---------- timeline ---------- */
-.phase{ background: var(--card); border-radius: var(--r-card); box-shadow: var(--sh); padding:15px 16px; margin-bottom:13px; }
-.phase-h{ display:flex; align-items:flex-start; gap:11px; }
-.phase-dot{ width:12px; height:12px; border-radius:50%; margin-top:6px; flex:none; background: var(--line-2); }
-.phase.now  .phase-dot{ background: var(--d-buy); }
-.phase.late .phase-dot{ background: var(--d-alert); }
-.phase-h h4{ font-size:15.5px; }
-.phase-h .sum{ margin-inline-start:auto; font-size:13.5px; font-weight:700; font-variant-numeric:tabular-nums; }
-.phase .tag{
-  display:inline-block; font-size:11.5px; font-weight:600; border-radius: var(--r-pill);
-  padding:2px 9px; margin-top:5px; background: var(--card-2); color: var(--ink-2);
-}
-.phase.now  .tag{ background: color-mix(in srgb, var(--d-buy) 16%, transparent);   color: var(--d-buy); }
-.phase.late .tag{ background: color-mix(in srgb, var(--d-alert) 16%, transparent); color: var(--d-alert); }
-.phase .note{ font-size:12.5px; color:var(--muted); margin:9px 0 0; }
-.phase .win{ font-size:12px; color:var(--ink-2); font-variant-numeric:tabular-nums; margin-top:4px; }
-.chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
-.chip{
-  display:inline-flex; align-items:center; gap:7px; background: var(--card-2);
-  border-radius: var(--r-pill); padding:5px 11px; font-size:12.5px;
-}
-.chip b{ font-variant-numeric:tabular-nums; color: var(--ink-2); }
-.chip .rm{ color:var(--muted); font-size:11.5px; }
-
-/* ---------- charts ---------- */
-.chart{ width:100%; height:auto; display:block; overflow:visible; }
-.grid-l{ stroke: var(--line); stroke-width:1; }
-.axis-t{ fill: var(--muted); font-size:11px; direction:ltr; }
-.bar-a{ fill: var(--d-home); }
-.bar-b{ fill: var(--d-buy); }
-.area-f{ fill: var(--d-buy); opacity:.16; }
-.area-s{ fill:none; stroke: var(--d-buy); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
-.dot-e{ fill: var(--d-buy); stroke: var(--card); stroke-width:2; }
-.keys{ display:flex; gap:16px; justify-content:center; margin-top:10px; font-size:12px; color:var(--ink-2); }
-.keys span{ display:inline-flex; align-items:center; gap:6px; }
-.keys i{ width:9px; height:9px; border-radius:3px; flex:none; }
-
+/* ---------- money: budget vs projection by room ---------- */
 .rowbar{ display:grid; grid-template-columns: 1fr 96px; gap:10px; align-items:center; padding:9px 0; border-bottom:1px solid var(--line); }
 .rowbar:last-child{ border-bottom:0; }
 .rowbar .nm{ font-size:13px; font-weight:600; margin-bottom:5px; }
@@ -351,9 +315,6 @@ input,select{ font:inherit; color:inherit; }
   width:74px; background: var(--card-2); border:0; border-radius:9px; padding:4px 8px;
   font-size:12.5px; font-variant-numeric:tabular-nums;
 }
-.item .store{ width:96px; background: var(--card-2); border:0; border-radius:9px; padding:4px 8px; font-size:12.5px; }
-.item .due{ font-variant-numeric:tabular-nums; }
-.item .due.late{ color: var(--d-alert); font-weight:700; }
 .item .del{ color: var(--muted); font-size:19px; line-height:1; padding:2px 4px; flex:none; }
 .item .del:hover{ color: var(--d-alert); }
 .seg{ display:inline-flex; background: var(--card-2); border-radius: var(--r-pill); padding:3px; margin-top:9px; }
@@ -398,7 +359,6 @@ input,select{ font:inherit; color:inherit; }
 @media (pointer: coarse){
   input, select, .item .nm, .sh-title-input{ font-size:16px; }
   .item .price{ width:84px; }
-  .item .store{ width:118px; }
 }
 
 .view{ display:none; }
@@ -426,6 +386,9 @@ input,select{ font:inherit; color:inherit; }
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
         <span id="hdDate">—</span>
       </span>
+      <button class="ah-btn" id="settingsBtn" aria-label="הגדרות">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 19l-.1.1A2 2 0 1 1 5 16.3l.1-.1A1.6 1.6 0 0 0 4 13.6H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 5.2 7l-.1-.1A2 2 0 1 1 7.9 4.1L8 4.2a1.6 1.6 0 0 0 2.7-1.1V3a2 2 0 1 1 4 0v.1A1.6 1.6 0 0 0 17.4 4.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/></svg>
+      </button>
       <button class="ah-btn" id="themeBtn" aria-label="החלפת מצב תצוגה">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
       </button>
@@ -447,33 +410,13 @@ input,select{ font:inherit; color:inherit; }
     <div id="roomCards"></div>
   </section>
 
-  <!-- ============ TIMELINE ============ -->
-  <section class="view" id="v-time">
-    <p class="lede">כל פריט נושא זמן אספקה. השלבים נספרים אחורה מתאריך הכניסה, כך שהם זזים לבד כשאתה משנה אותו. מוצגים רק פריטים שעדיין צריך לקנות.</p>
-    <div id="phases"></div>
-  </section>
-
   <!-- ============ MONEY ============ -->
   <section class="view" id="v-money">
     <div class="tiles" id="moneyTiles"></div>
 
     <div class="card">
-      <div class="card-h"><h3>הוצאה לפי שלב הזמנה</h3></div>
-      <svg class="chart" id="phaseChart" viewBox="0 0 340 180" role="img" aria-label="הוצאה לפי שלב הזמנה"></svg>
-      <div class="keys">
-        <span><i style="background:var(--d-home)"></i> שולם</span>
-        <span><i style="background:var(--d-buy)"></i> עוד מתוכנן</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-h"><h3>הוצאה מצטברת</h3><span class="side" id="cumSide"></span></div>
-      <svg class="chart" id="cumChart" viewBox="0 0 340 170" role="img" aria-label="הוצאה מצטברת לאורך חודשי ההזמנה"></svg>
-    </div>
-
-    <div class="card">
       <div class="card-h"><h3>תקציב מול צפי לפי חדר</h3></div>
-      <p class="lede">הקו הכהה הוא תקציב החדר.</p>
+      <p class="lede">הפס הכהה הוא מה שכבר שולם, הבהיר הוא מה שעוד מתוכנן, והקו האנכי הוא תקציב החדר.</p>
       <div id="roomBars"></div>
     </div>
   </section>
@@ -483,20 +426,12 @@ input,select{ font:inherit; color:inherit; }
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
       <span class="cap">חדרים</span>
     </button>
-    <button role="tab" data-v="time" aria-selected="false">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-      <span class="cap">ציר זמן</span>
-    </button>
     <button class="fab" id="fab" aria-label="הוספת פריט">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
     </button>
     <button role="tab" data-v="money" aria-selected="false">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 4 5-7 4 5"/><path d="M3 21h18"/></svg>
       <span class="cap">כספים</span>
-    </button>
-    <button id="settingsTab">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 19l-.1.1A2 2 0 1 1 5 16.3l.1-.1A1.6 1.6 0 0 0 4 13.6H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 5.2 7l-.1-.1A2 2 0 1 1 7.9 4.1L8 4.2a1.6 1.6 0 0 0 2.7-1.1V3a2 2 0 1 1 4 0v.1A1.6 1.6 0 0 0 17.4 4.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/></svg>
-      <span class="cap">הגדרות</span>
     </button>
   </nav>
 </div>
@@ -525,104 +460,66 @@ input,select{ font:inherit; color:inherit; }
    ROOMS — default set (names only; editable and deletable)
    ============================================================ */
 const DEFAULT_ROOMS = [
-  ["balcony","מרפסת שמש"], ["living","סלון"], ["dining","פינת אוכל"], ["kitchen","מטבח"],
-  ["mamad","ממ״ד / חדר שינה 4"], ["hall","מסדרון"], ["bed3","חדר שינה 3"], ["storage","ארון מצעים ומחסן"],
-  ["bed2","חדר שינה 2"], ["bathmain","חדר רחצה"], ["laundry","מרפסת שירות"], ["ensuite","מקלחת הורים"],
-  ["toilet","שירותי אורחים"], ["master","חדר שינה הורים"], ["general","כללי ותשתיות"]
+  ["balcony","מרפסת"], ["living","סלון"], ["kitchen","מטבח"],
+  ["bed_itai","חדר שינה איתי"], ["bed_elad","חדר שינה אלעד"], ["treatment","חדר טיפולים"],
+  ["master","חדר שינה הורים"], ["balcony_small","מרפסת קטנה"],
+  ["ensuite","מקלחת + שירותים הורים"], ["bath","מקלחת + שירותים"]
 ];
 const roomById = id => state.rooms.find(r=>r.id===id);
 const roomName = id => { const r = roomById(id); return r ? r.name : "חדר"; };
 
-/* [name, estimate ₪, lead weeks, default status] */
+/* [name, estimate ₪, default status] */
 const SEED = {
-  kitchen: [
-    ["מקרר",4500,4,"buy"], ["תנור בילט אין",2200,4,"buy"], ["כיריים",1800,4,"buy"],
-    ["קולט אדים",1200,4,"buy"], ["מדיח כלים",2500,4,"buy"], ["מיקרוגל",500,2,"home"],
-    ["מיקסר ובלנדר",600,2,"home"], ["קומקום חשמלי",250,2,"home"], ["טוסטר אובן",400,2,"home"],
-    ["סירים ומחבתות",1200,2,"home"], ["כלי אוכל וסכו״ם",1500,2,"home"],
-    ["ארגון מגירות ופנים ארונות",600,8,"buy"], ["ברז מטבח ומסנן מים",900,6,"buy"],
-    ["3 שרפרפים לאי",1200,8,"buy"], ["תאורה מעל האי",700,5,"buy"]
+  balcony: [
+    ["סט ישיבה לחוץ",3500,"buy"], ["שולחן מרפסת",900,"buy"], ["סוכך או הצללה",1800,"buy"],
+    ["אדניות וצמחייה",700,"buy"], ["תאורת חוץ",500,"buy"], ["שטיח חוץ",400,"buy"]
   ],
   living: [
-    ["ספה שלושה מושבים",6000,12,"buy"], ["כורסה",1800,12,"buy"], ["שולחן סלון",900,10,"buy"],
-    ["מזנון טלוויזיה",1500,10,"buy"], ["טלוויזיה 55 אינץ׳",2800,3,"home"], ["מקרן קול",900,3,"home"],
-    ["שטיח",1200,6,"buy"], ["וילונות ומסילה",1800,5,"buy"], ["גוף תאורה מרכזי",800,5,"buy"],
-    ["מנורת עמידה",450,3,"home"], ["כריות נוי וטקסטיל",400,2,"home"], ["מזגן עילי",4500,10,"buy"]
+    ["ספה שלושה מושבים",6000,"buy"], ["כורסה",1800,"buy"], ["שולחן סלון",900,"buy"],
+    ["מזנון טלוויזיה",1500,"buy"], ["טלוויזיה 55 אינץ׳",2800,"home"], ["מקרן קול",900,"home"],
+    ["שטיח",1200,"buy"], ["וילונות ומסילה",1800,"buy"], ["גוף תאורה מרכזי",800,"buy"],
+    ["מנורת עמידה",450,"home"], ["כריות נוי וטקסטיל",400,"home"], ["מזגן עילי",4500,"buy"],
+    ["שולחן אוכל",2500,"buy"], ["שישה כיסאות",3000,"buy"]
   ],
-  dining: [
-    ["שולחן אוכל",2500,10,"buy"], ["שישה כיסאות",3000,10,"buy"],
-    ["גוף תאורה מעל השולחן",900,5,"buy"], ["שידת הגשה",1200,10,"buy"]
+  kitchen: [
+    ["מקרר",4500,"buy"], ["תנור בילט אין",2200,"buy"], ["כיריים",1800,"buy"],
+    ["קולט אדים",1200,"buy"], ["מדיח כלים",2500,"buy"], ["מיקרוגל",500,"home"],
+    ["מיקסר ובלנדר",600,"home"], ["קומקום חשמלי",250,"home"], ["טוסטר אובן",400,"home"],
+    ["סירים ומחבתות",1200,"home"], ["כלי אוכל וסכו״ם",1500,"home"],
+    ["ברז מטבח ומסנן מים",900,"buy"], ["3 שרפרפים לאי",1200,"buy"], ["תאורה מעל האי",700,"buy"]
   ],
-  balcony: [
-    ["סט ישיבה לחוץ",3500,8,"buy"], ["שולחן מרפסת",900,8,"buy"], ["סוכך או הצללה",1800,9,"buy"],
-    ["אדניות וצמחייה",700,2,"buy"], ["תאורת חוץ",500,5,"buy"], ["שטיח חוץ",400,3,"buy"]
+  bed_itai: [
+    ["מיטה",1800,"buy"], ["מזרן",1500,"buy"], ["ארון בגדים",3500,"buy"],
+    ["שולחן כתיבה",900,"buy"], ["כיסא",700,"buy"], ["שידה",500,"buy"],
+    ["וילון",700,"buy"], ["מזגן",3200,"buy"], ["תאורה",400,"buy"]
+  ],
+  bed_elad: [
+    ["מיטה",1800,"buy"], ["מזרן",1500,"buy"], ["ארון בגדים",3500,"buy"],
+    ["שולחן כתיבה",900,"buy"], ["כיסא",700,"buy"], ["שידה",500,"buy"],
+    ["וילון",700,"buy"], ["מזגן",3200,"buy"], ["תאורה",400,"buy"]
+  ],
+  treatment: [
+    ["מיטת טיפולים",2500,"buy"], ["שידת אחסון",1200,"buy"], ["כיסא מטפל",800,"buy"],
+    ["מדפים וארונית",900,"buy"], ["תאורה רכה",500,"buy"], ["וילון",700,"buy"], ["מזגן",3200,"buy"]
   ],
   master: [
-    ["מיטה זוגית ובסיס",4500,8,"buy"], ["מזרן זוגי",4000,8,"buy"], ["שתי שידות לילה",1200,8,"buy"],
-    ["ארון הזזה",6000,18,"buy"], ["מנורות קריאה",500,5,"buy"], ["מצעים וכריות",1200,2,"buy"],
-    ["וילון האפלה",1200,5,"buy"], ["מזגן",3500,10,"buy"], ["שטיח",700,6,"buy"]
+    ["מיטה זוגית ובסיס",4500,"buy"], ["מזרן זוגי",4000,"buy"], ["שתי שידות לילה",1200,"buy"],
+    ["ארון הזזה",6000,"buy"], ["מנורות קריאה",500,"buy"], ["מצעים וכריות",1200,"buy"],
+    ["וילון האפלה",1200,"buy"], ["מזגן",3500,"buy"], ["שטיח",700,"buy"]
   ],
-  bed3: [
-    ["מיטת יחיד וחצי",1800,8,"buy"], ["מזרן",1500,8,"buy"], ["ארון בגדים",3500,18,"buy"],
-    ["שולחן כתיבה",900,10,"buy"], ["כיסא משרדי",700,4,"buy"], ["שידה",500,8,"buy"],
-    ["וילון",700,5,"buy"], ["מזגן",3200,10,"buy"], ["תאורה",400,5,"buy"]
-  ],
-  bed2: [
-    ["מיטה",1600,8,"buy"], ["מזרן",1400,8,"buy"], ["ארון בגדים",3200,18,"buy"],
-    ["שולחן כתיבה",800,10,"home"], ["כיסא",500,4,"home"], ["וילון",700,5,"buy"],
-    ["מזגן",3200,10,"buy"], ["תאורה",400,5,"buy"]
-  ],
-  mamad: [
-    ["מיטה ומזרן",2500,8,"home"], ["ארון",2800,18,"buy"], ["וילון לחלון הממ״ד",600,5,"buy"],
-    ["כיסוי לדלת הממ״ד",1200,12,"buy"], ["תאורה",350,5,"buy"]
-  ],
-  bathmain: [
-    ["ארון אמבטיה עם כיור",2500,12,"buy"], ["מראה עם תאורה",800,6,"buy"],
-    ["מקלחון או אמבטיה",2000,12,"buy"], ["ברזים",1200,8,"buy"],
-    ["אביזרי תלייה",400,2,"home"], ["מחיצת זכוכית",600,10,"buy"], ["אחסון ומדפים",300,3,"buy"]
+  balcony_small: [
+    ["מכונת כביסה",2500,"home"], ["מייבש כביסה",2800,"buy"],
+    ["ארונית שירות",1200,"buy"], ["מתלה כביסה",300,"home"], ["כיור שירות",800,"buy"]
   ],
   ensuite: [
-    ["ארון עם כיור",2200,12,"buy"], ["מקלחון זכוכית",2400,10,"buy"],
-    ["ברז וראש מקלחת",1100,8,"buy"], ["מראה",600,6,"buy"], ["אביזרים",300,2,"home"]
+    ["ארון אמבטיה עם כיור",2500,"buy"], ["מראה עם תאורה",800,"buy"], ["מקלחון זכוכית",2400,"buy"],
+    ["ברז וראש מקלחת",1100,"buy"], ["אסלה תלויה וסוללת הדחה",1800,"buy"], ["אביזרי תלייה",400,"home"]
   ],
-  toilet: [
-    ["כיור וארונית",1200,10,"buy"], ["מראה",400,6,"buy"],
-    ["אסלה תלויה וסוללת הדחה",1800,10,"buy"], ["אביזרים",250,2,"home"]
-  ],
-  laundry: [
-    ["מכונת כביסה",2500,4,"home"], ["מייבש כביסה",2800,4,"buy"],
-    ["ארון שירות",1200,12,"buy"], ["מתלה כביסה",300,2,"home"], ["כיור שירות",800,8,"buy"]
-  ],
-  hall: [
-    ["מזנון כניסה",1200,10,"buy"], ["מראה",500,6,"home"], ["מתלה מעילים",350,3,"home"],
-    ["תאורת מסדרון",600,5,"buy"], ["שטיח מסדרון",400,4,"buy"]
-  ],
-  storage: [
-    ["מדפים וארגונית",700,4,"home"], ["ארגזי אחסון",300,2,"home"],
-    ["שואב אבק",1200,3,"home"], ["מוצרי ניקיון וכלי עבודה",500,1,"home"]
-  ],
-  general: [
-    ["צביעת הדירה",3000,6,"buy"], ["הובלה",2500,3,"buy"], ["הרכבות והתקנות",2000,3,"buy"],
-    ["החלפת צילינדרים",400,1,"buy"], ["רשתות לחלונות",2500,6,"buy"],
-    ["ביטוח דירה ותכולה",1200,1,"buy"], ["עבודות חשמל",1500,8,"buy"], ["עבודות אינסטלציה",1000,8,"buy"]
+  bath: [
+    ["ארון עם כיור",2200,"buy"], ["מראה",600,"buy"], ["מקלחון או אמבטיה",2000,"buy"],
+    ["ברזים",1200,"buy"], ["אסלה תלויה וסוללת הדחה",1800,"buy"], ["אביזרים",300,"home"]
   ]
 };
-
-const PHASES = [
-  { id:"carpentry", lo:16, hi:999, name:"נגרות וארונות",
-    note:"זמן הייצור הארוך ביותר בכל המהלך. אם משהו יאחר, זה יהיה כאן." },
-  { id:"big", lo:10, hi:15, name:"ריהוט גדול, מזגנים וחדרי רחצה",
-    note:"פריטים שמיוצרים או מיובאים לפי הזמנה." },
-  { id:"works", lo:6, hi:9, name:"מיטות, עבודות בדירה ורשתות",
-    note:"חשמל ואינסטלציה קודמים לצביעה, והצביעה קודמת לווילונות." },
-  { id:"elec", lo:4, hi:5, name:"מוצרי חשמל, וילונות ותאורה",
-    note:"נכנסים אחרי שהעבודות בדירה הסתיימו." },
-  { id:"move", lo:2, hi:3, name:"הובלה, הרכבות וטקסטיל",
-    note:"השבועות הצפופים. כדאי לתאם הובלה והרכבות מראש." },
-  { id:"last", lo:0, hi:1, name:"השלמות של הרגע האחרון",
-    note:"אפשר לקנות גם אחרי הכניסה בלי להיתקע." }
-];
-const phaseOf = lead => PHASES.find(p => lead >= p.lo && lead <= p.hi) || PHASES[PHASES.length-1];
 
 const STATUS = {
   home: { label:"לוקחים מהבית", short:"מהבית", v:"home" },
@@ -641,7 +538,6 @@ const money = v => cf.format(Math.round(v||0));
 const esc = s => String(s??"").replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
 const DAY = 86400000;
 const today = ()=>{ const d=new Date(); d.setHours(0,0,0,0); return d; };
-const fmtDate = d => d ? d.toLocaleDateString("he-IL",{ day:"2-digit", month:"2-digit", year:"2-digit" }) : "—";
 
 /* ============================================================
    STATE — one phone, localStorage, nothing else
@@ -654,8 +550,8 @@ function seedState(){
   let n=0; const items=[];
   const rooms = DEFAULT_ROOMS.map(([id,name])=>({ id, name }));
   for (const r of rooms)
-    for (const [name, est, lead, st] of (SEED[r.id]||[]))
-      items.push({ id:"i"+(++n), room:r.id, name, est, actual:null, status:st, lead, store:"" });
+    for (const [name, est, st] of (SEED[r.id]||[]))
+      items.push({ id:"i"+(++n), room:r.id, name, est, actual:null, status:st });
   const roomBudgets = {};
   for (const r of rooms)
     roomBudgets[r.id] = Math.round(items.filter(i=>i.room===r.id).reduce((a,i)=>a+i.est,0)/500)*500;
@@ -696,9 +592,7 @@ function normalize(s){
     room: i.room, name: String(i.name||"פריט"),
     est: Math.max(0, +i.est||0),
     actual: i.actual==null ? null : Math.max(0, +i.actual||0),
-    status: STATUS[i.status] ? i.status : "buy",
-    lead: Math.min(52, Math.max(0, +i.lead||2)),
-    store: String(i.store||"")
+    status: STATUS[i.status] ? i.status : "buy"
   }));
   return out;
 }
@@ -711,7 +605,6 @@ function commit(){ save(); renderAll(); }
 
 /* ---- derived ---- */
 const moveInDate = ()=>{ const d = new Date(state.moveIn+"T00:00:00"); return isNaN(d) ? null : d; };
-function orderBy(i){ const m = moveInDate(); return m ? new Date(m.getTime() - (i.lead||2)*7*DAY) : null; }
 const daysTo = d => d ? Math.round((d - today())/DAY) : null;
 const roomItems = id => state.items.filter(i=>i.room===id);
 function totals(items){
@@ -739,7 +632,6 @@ function toast(msg){
    ============================================================ */
 const VIEW_TITLE = {
   rooms: ["הבית החדש", ()=> nf.format(state.rooms.length) + " חדרים · " + nf.format(state.items.length) + " פריטים"],
-  time:  ["ציר זמן",   ()=> nf.format(state.items.filter(i=>i.status==="buy").length) + " להזמנה"],
   money: ["כספים",     ()=> "תקציב " + money(state.budget)]
 };
 function renderHeader(){
@@ -771,14 +663,13 @@ const IC = {
 
 function renderTiles(){
   const t = totals(state.items);
-  const overdue = state.items.filter(i=> i.status==="buy" && (daysTo(orderBy(i))??1) < 0).length;
+  const left0 = state.budget - t.projected;
   $("#tiles").innerHTML =
     tileHTML("buy",  nf.format(t.nBuy),  "צריך לקנות", money(t.planned) + " בהערכה", IC.buy) +
     tileHTML("done", nf.format(t.nDone), "כבר נקנה",   money(t.paid) + " שולם", IC.done) +
     tileHTML("home", nf.format(t.nHome), "מהבית הישן", money(t.saved) + " נחסך", IC.home) +
-    (overdue
-      ? tileHTML("alert", nf.format(overdue), "באיחור", "מועד ההזמנה חלף", IC.clock)
-      : tileHTML("home", money(Math.max(0, state.budget - t.projected)).replace(/\s?₪/,""), "נשאר בתקציב", "מתוך " + money(state.budget), IC.wallet));
+    tileHTML(left0>=0 ? "home" : "alert", money(Math.abs(left0)).replace(/\s?₪/,""),
+      left0>=0 ? "נשאר בתקציב" : "חריגה מהתקציב", "מתוך " + money(state.budget), IC.wallet);
 
   const left = state.budget - t.projected;
   $("#moneyTiles").innerHTML =
@@ -830,121 +721,6 @@ function renderRoomCards(){
     (roomFilter==="all" ? addBtn : "");
   $$("#roomCards .rcard").forEach(b=> b.addEventListener("click", ()=> openRoom(b.dataset.room)));
   const ab = $("#addRoomBtn"); if (ab) ab.addEventListener("click", addRoom);
-}
-
-/* ============================================================
-   TIMELINE
-   ============================================================ */
-function renderPhases(){
-  const pend = state.items.filter(i=>i.status==="buy"), m = moveInDate();
-  if (!pend.length || !m){ $("#phases").innerHTML = `<p class="empty">אין פריטים שממתינים להזמנה.</p>`; return; }
-  const now = today(), by = new Map(PHASES.map(p=>[p.id,[]]));
-  for (const i of pend) by.get(phaseOf(i.lead||0).id).push(i);
-
-  $("#phases").innerHTML = PHASES.map(p=>{
-    const items = by.get(p.id); if (!items.length) return "";
-    const deadline = new Date(m.getTime() - p.lo*7*DAY);
-    const opens = p.hi >= 999 ? null : new Date(m.getTime() - p.hi*7*DAY);
-    let cls="", tag="";
-    if (deadline < now){ cls="late"; tag="חלון ההזמנה נסגר"; }
-    else if (!opens || opens <= now){ cls="now"; tag="פתוח להזמנה עכשיו"; }
-    else { tag = "נפתח בעוד " + nf.format(Math.round((opens-now)/DAY)) + " ימים"; }
-    items.sort((a,b)=> b.est - a.est);
-    return `<div class="phase ${cls}">
-      <div class="phase-h">
-        <span class="phase-dot"></span>
-        <div style="flex:1;min-width:0">
-          <h4>${esc(p.name)}</h4>
-          <span class="tag">${esc(tag)} · ${items.length} פריטים</span>
-        </div>
-        <span class="sum">${money(items.reduce((a,i)=>a+i.est,0))}</span>
-      </div>
-      <p class="note">${esc(p.note)}</p>
-      <div class="win">חלון ההזמנה: ${ opens ? fmtDate(opens)+" – "+fmtDate(deadline) : "עד "+fmtDate(deadline) }</div>
-      <div class="chips">${items.map(i=>`<button class="chip" data-room="${i.room}">
-        <span>${esc(i.name)}</span><b>${money(i.est)}</b><span class="rm">${esc(roomName(i.room))}</span></button>`).join("")}</div>
-    </div>`;
-  }).join("");
-  $$("#phases .chip").forEach(c=> c.addEventListener("click", ()=> openRoom(c.dataset.room)));
-}
-
-/* ============================================================
-   CHARTS
-   ============================================================ */
-function niceMax(v){
-  if (v <= 0) return 1;
-  const mag = Math.pow(10, Math.floor(Math.log10(v)));
-  return Math.ceil(v/mag)*mag;
-}
-function renderPhaseChart(){
-  const rows = PHASES.map(p=>{
-    const its = state.items.filter(i=> i.status!=="home" && phaseOf(i.lead||0).id === p.id);
-    const t = totals(its);
-    return { short: p.name.split(/[ ,]/)[0], paid:t.paid, planned:t.planned };
-  });
-  /* RTL: the value gutter sits on the right and the phases run right to left,
-     so the eye enters the chart where it enters the page. */
-  const W=340, H=180, GUT=38, PADL=8, PT=10, PB=32;
-  const x0 = PADL, x1 = W-GUT, iw = x1-x0, ih = H-PT-PB;
-  const max = niceMax(Math.max(...rows.map(r=>Math.max(r.paid, r.planned)), 1));
-  const bw = iw/rows.length, barw = Math.min(13, bw/2 - 3);
-  const y = v => PT + ih - (v/max)*ih;
-
-  let g = "";
-  for (let k=0; k<=4; k++){
-    const v = max*k/4, yy = y(v);
-    g += `<line class="grid-l" x1="${x0}" y1="${yy}" x2="${x1}" y2="${yy}"/>
-          <text class="axis-t" x="${x1+5}" y="${yy+4}" text-anchor="start">${nf.format(v/1000)}k</text>`;
-  }
-  /* bars grow from the baseline, with a 2px surface gap inside each pair */
-  const bars = rows.map((r,ix)=>{
-    const cx = x1 - bw*(ix + 0.5);
-    const bA = `<rect class="bar-a" x="${cx + 1}" y="${y(r.paid)}" width="${barw}" height="${Math.max(0, PT+ih-y(r.paid))}" rx="3"><title>${esc(r.short)} · שולם ${money(r.paid)}</title></rect>`;
-    const bB = `<rect class="bar-b" x="${cx - barw - 1}" y="${y(r.planned)}" width="${barw}" height="${Math.max(0, PT+ih-y(r.planned))}" rx="3"><title>${esc(r.short)} · מתוכנן ${money(r.planned)}</title></rect>`;
-    return bA + bB + `<text class="axis-t" x="${cx}" y="${H-PB+16}" text-anchor="middle" style="direction:rtl">${esc(r.short)}</text>`;
-  }).join("");
-  $("#phaseChart").innerHTML = g + bars +
-    `<line class="grid-l" x1="${x0}" y1="${PT+ih}" x2="${x1}" y2="${PT+ih}" stroke="var(--line-2)"/>`;
-}
-
-function renderCumChart(){
-  const pend = state.items.filter(i=> i.status!=="home");
-  const byMonth = new Map();
-  for (const i of pend){
-    const ob = orderBy(i); if (!ob) continue;
-    const k = ob.getFullYear()+"-"+String(ob.getMonth()+1).padStart(2,"0");
-    if (!byMonth.has(k)) byMonth.set(k, { k, d:new Date(ob.getFullYear(), ob.getMonth(), 1), v:0 });
-    byMonth.get(k).v += projected(i);
-  }
-  const pts = Array.from(byMonth.values()).sort((a,b)=>a.d-b.d);
-  if (pts.length < 2){ $("#cumChart").innerHTML = ""; $("#cumSide").textContent = ""; return; }
-  let run = 0; pts.forEach(p=>{ run += p.v; p.c = run; });
-
-  /* RTL: earliest month on the right, so the curve builds leftwards. */
-  const W=340, H=170, GUT=38, PADL=10, PT=12, PB=30;
-  const x0 = PADL, x1 = W-GUT, iw = x1-x0, ih = H-PT-PB;
-  const max = niceMax(run);
-  const X = ix => x1 - (iw * ix/(pts.length-1));
-  const Y = v => PT + ih - (v/max)*ih;
-
-  let g = "";
-  for (let k=0;k<=4;k++){
-    const v = max*k/4, yy = Y(v);
-    g += `<line class="grid-l" x1="${x0}" y1="${yy}" x2="${x1}" y2="${yy}"/>
-          <text class="axis-t" x="${x1+5}" y="${yy+4}" text-anchor="start">${nf.format(v/1000)}k</text>`;
-  }
-  const line = pts.map((p,ix)=> (ix?"L":"M") + X(ix).toFixed(1) + " " + Y(p.c).toFixed(1)).join(" ");
-  const base = (PT+ih).toFixed(1);
-  const area = line + ` L ${X(pts.length-1).toFixed(1)} ${base} L ${X(0).toFixed(1)} ${base} Z`;
-  const labels = pts.map((p,ix)=>{
-    if (pts.length > 6 && ix % 2) return "";
-    return `<text class="axis-t" x="${X(ix)}" y="${H-PB+16}" text-anchor="middle">${p.d.toLocaleDateString("he-IL",{month:"short"})}</text>`;
-  }).join("");
-  const last = pts.length-1;
-  $("#cumChart").innerHTML = g +
-    `<path class="area-f" d="${area}"/><path class="area-s" d="${line}"/>` +
-    `<circle class="dot-e" cx="${X(last)}" cy="${Y(pts[last].c)}" r="5"/>` + labels;
-  $("#cumSide").textContent = "עד הכניסה · " + money(run);
 }
 
 function renderRoomBars(){
@@ -1048,8 +824,6 @@ function renderRoom(){
 }
 
 function itemHTML(i){
-  const ob = orderBy(i), d = daysTo(ob);
-  const late = i.status==="buy" && d!=null && d<0;
   const delta = (i.status==="done" && i.actual!=null) ? i.actual - i.est : null;
   return `<div class="item is-${i.status}" data-id="${i.id}">
     <button class="tick" data-cycle aria-label="שינוי סטטוס">
@@ -1061,9 +835,6 @@ function itemHTML(i){
         <span>הערכה <input class="price" type="number" min="0" step="50" value="${i.est}" data-f="est" aria-label="מחיר משוער"></span>
         ${ i.status==="done" ? `<span>בפועל <input class="price" type="number" min="0" step="50" value="${i.actual!=null?i.actual:""}" placeholder="—" data-f="actual" aria-label="מחיר בפועל"></span>` : "" }
         ${ delta!=null && delta!==0 ? `<span style="color:${delta>0?"var(--d-alert)":"var(--d-done)"};font-weight:700">${delta>0?"▲":"▼"} ${money(Math.abs(delta))}</span>` : "" }
-        ${ i.status!=="home" ? `<span><input class="store" type="text" value="${esc(i.store||"")}" placeholder="חנות" data-f="store" aria-label="חנות"></span>` : "" }
-        ${ i.status==="buy" ? `<span>אספקה <input class="price" style="width:52px" type="number" min="0" max="52" value="${i.lead}" data-f="lead" aria-label="שבועות אספקה"> שב׳</span>
-             <span class="due ${late?"late":""}">${late?"היה להזמין ":"להזמין עד "}${fmtDate(ob)}</span>` : "" }
       </div>
       <div class="seg" role="group" aria-label="סטטוס">
         ${Object.keys(STATUS).map(s=>`<button data-s="${s}" aria-pressed="${i.status===s}">${STATUS[s].short}</button>`).join("")}
@@ -1081,9 +852,7 @@ function wireItems(){
       inp.addEventListener("change", ()=>{
         const f = inp.dataset.f;
         if (f==="name")        it.name = inp.value.trim() || "פריט";
-        else if (f==="store")  it.store = inp.value.trim();
         else if (f==="actual") it.actual = inp.value==="" ? null : Math.max(0, +inp.value||0);
-        else if (f==="lead")   it.lead = Math.min(52, Math.max(0, +inp.value||0));
         else                   it.est = Math.max(0, +inp.value||0);
         commit();
       });
@@ -1108,7 +877,7 @@ function wireItems(){
 function addItemTo(roomId){
   state.seq = (state.seq||0)+1;
   const fresh = { id:"i"+state.seq+"_"+Date.now().toString(36), room:roomId,
-                  name:"פריט חדש", est:0, actual:null, status:"buy", lead:2, store:"" };
+                  name:"פריט חדש", est:0, actual:null, status:"buy" };
   state.items.push(fresh);
   if (uiRoom !== roomId) openRoom(roomId); else commit();
   setTimeout(()=>{
@@ -1198,7 +967,7 @@ function openSettings(){
    ============================================================ */
 function renderAll(){
   renderHeader(); renderTiles(); renderRoomCards();
-  renderPhases(); renderPhaseChart(); renderCumChart(); renderRoomBars();
+  renderRoomBars();
   if (uiRoom) renderRoom();
 }
 
@@ -1219,7 +988,7 @@ $$("#roomPills button").forEach(b=>{
   });
 });
 $("#fab").addEventListener("click", ()=> uiRoom ? addItemTo(uiRoom) : openAddSheet());
-$("#settingsTab").addEventListener("click", openSettings);
+$("#settingsBtn").addEventListener("click", openSettings);
 $("#scrim").addEventListener("click", closeSheet);
 $("#shClose").addEventListener("click", closeSheet);
 document.addEventListener("keydown", e=>{ if (e.key==="Escape") closeSheet(); });
