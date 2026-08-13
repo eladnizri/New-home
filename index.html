@@ -1,666 +1,519 @@
-<title>מפת הבית החדש</title>
+<title>הבית החדש</title>
 
 <style>
 /* ============================================================
-   TOKENS — light is the bare :root; dark redefines tokens only
+   TOKENS
+   Two colour tiers. The pastel tier paints large labelled
+   surfaces (tiles, blobs, fills). The data tier is a deepened
+   version of the same hues, used wherever colour actually
+   encodes something — status dots, rings, chart marks — and is
+   validated for colourblind separation. They are never swapped.
    ============================================================ */
 :root{
   direction: rtl;
 
-  --paper:      #f1f4f5;
-  --grid:       #dde5e8;
-  --surface:    #ffffff;
-  --surface-2:  #e8edef;
-  --surface-3:  #dbe3e6;
-  --line:       #c6d1d6;
-  --line-strong:#93a4ac;
-  --ink:        #141b20;
-  --ink-2:      #3a4850;
-  --muted:      #66787f;
+  --bg:        #ECECF3;
+  --bg-2:      #F4F4F9;
+  --card:      #FFFFFF;
+  --card-2:    #F6F6FA;
+  --card-3:    #EDEDF4;
+  --line:      #E3E2EE;
+  --line-2:    #CFCDDE;
+  --ink:       #2E2A33;
+  --ink-2:     #5C5665;
+  --muted:     #767085;
 
-  --c-home:  #4a6fb5;
-  --c-buy:   #cf5f10;
-  --c-done:  #0f8a72;
-  --c-alert: #b3402f;
+  /* data tier — validated, light surface */
+  --d-home:    #96517A;
+  --d-buy:     #C4762B;
+  --d-done:    #12866E;
+  --d-alert:   #C0453C;
 
-  --shadow-sm: 0 1px 2px rgba(20,27,32,.07), 0 1px 1px rgba(20,27,32,.04);
-  --shadow-md: 0 6px 20px rgba(20,27,32,.10), 0 2px 6px rgba(20,27,32,.06);
-  --shadow-lg: 0 18px 50px rgba(20,27,32,.20);
+  /* pastel tier — surfaces only, always carry a text label */
+  --t-home:    #9E7C8C;
+  --t-buy:     #E3A276;
+  --t-done:    #A3C68B;
+  --t-alert:   #E28787;
+  --t-ink:     #FFFFFF;
+
+  --brand:     #8D5C77;
+  --brand-ink: #FFFFFF;
+
+  --sh-sm: 0 2px 6px rgba(46,42,51,.05);
+  --sh:    0 6px 18px rgba(46,42,51,.07), 0 1px 3px rgba(46,42,51,.04);
+  --sh-lg: 0 -10px 40px rgba(46,42,51,.16);
+  --sh-fab: 0 8px 20px rgba(141,92,119,.38);
 
   --ui: "Assistant","Heebo","Rubik","Noto Sans Hebrew",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
-  --mono: ui-monospace,"SF Mono","JetBrains Mono","Menlo","Consolas","Courier New",monospace;
 
-  --r: 3px;
-  --maxw: 1180px;
+  --r-card: 22px;
+  --r-tile: 20px;
+  --r-sm:   14px;
+  --r-pill: 999px;
+  --appw:   470px;
+  --navh:   72px;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --paper:      #0e1215;
-    --grid:       #1a2126;
-    --surface:    #151b1f;
-    --surface-2:  #1d252a;
-    --surface-3:  #253036;
-    --line:       #2c383e;
-    --line-strong:#4a5b64;
-    --ink:        #e7eef1;
-    --ink-2:      #b2c1c8;
-    --muted:      #7d9099;
+    --bg:      #15121A;
+    --bg-2:    #1B1721;
+    --card:    #221D2A;
+    --card-2:  #29222F;
+    --card-3:  #322A39;
+    --line:    #322A3B;
+    --line-2:  #443A4F;
+    --ink:     #F1ECF5;
+    --ink-2:   #C4BBCE;
+    --muted:   #8C8398;
 
-    --c-home:  #6b93e5;
-    --c-buy:   #d3701f;
-    --c-done:  #0fa583;
-    --c-alert: #e0705c;
+    --d-home:  #C56AA6;
+    --d-buy:   #C9781F;
+    --d-done:  #0EA083;
+    --d-alert: #E0776B;
 
-    --shadow-sm: 0 1px 2px rgba(0,0,0,.5);
-    --shadow-md: 0 6px 20px rgba(0,0,0,.55);
-    --shadow-lg: 0 18px 50px rgba(0,0,0,.7);
+    --t-home:  #5E4557;
+    --t-buy:   #6E4B2C;
+    --t-done:  #3C5B41;
+    --t-alert: #6B3B3B;
+    --t-ink:   #F6EFF3;
+
+    --brand:   #A9718E;
+    --brand-ink: #21181E;
+
+    --sh-sm: 0 2px 6px rgba(0,0,0,.4);
+    --sh:    0 6px 18px rgba(0,0,0,.45);
+    --sh-lg: 0 -10px 40px rgba(0,0,0,.6);
+    --sh-fab: 0 8px 20px rgba(0,0,0,.5);
   }
 }
 :root[data-theme="dark"]{
-  --paper:      #0e1215;
-  --grid:       #1a2126;
-  --surface:    #151b1f;
-  --surface-2:  #1d252a;
-  --surface-3:  #253036;
-  --line:       #2c383e;
-  --line-strong:#4a5b64;
-  --ink:        #e7eef1;
-  --ink-2:      #b2c1c8;
-  --muted:      #7d9099;
+  --bg:      #15121A;
+  --bg-2:    #1B1721;
+  --card:    #221D2A;
+  --card-2:  #29222F;
+  --card-3:  #322A39;
+  --line:    #322A3B;
+  --line-2:  #443A4F;
+  --ink:     #F1ECF5;
+  --ink-2:   #C4BBCE;
+  --muted:   #8C8398;
 
-  --c-home:  #6b93e5;
-  --c-buy:   #d3701f;
-  --c-done:  #0fa583;
-  --c-alert: #e0705c;
+  --d-home:  #C56AA6;
+  --d-buy:   #C9781F;
+  --d-done:  #0EA083;
+  --d-alert: #E0776B;
 
-  --shadow-sm: 0 1px 2px rgba(0,0,0,.5);
-  --shadow-md: 0 6px 20px rgba(0,0,0,.55);
-  --shadow-lg: 0 18px 50px rgba(0,0,0,.7);
+  --t-home:  #5E4557;
+  --t-buy:   #6E4B2C;
+  --t-done:  #3C5B41;
+  --t-alert: #6B3B3B;
+  --t-ink:   #F6EFF3;
+
+  --brand:   #A9718E;
+  --brand-ink: #21181E;
+
+  --sh-sm: 0 2px 6px rgba(0,0,0,.4);
+  --sh:    0 6px 18px rgba(0,0,0,.45);
+  --sh-lg: 0 -10px 40px rgba(0,0,0,.6);
+  --sh-fab: 0 8px 20px rgba(0,0,0,.5);
 }
 
-/* ============================================================
-   BASE
-   ============================================================ */
-*{ box-sizing: border-box; }
+/* ============================================================ */
+*{ box-sizing:border-box; }
 body{
-  margin:0;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--ui);
-  font-size: 15px;
-  line-height: 1.5;
-  -webkit-text-size-adjust: 100%;
+  margin:0; background: var(--bg); color: var(--ink);
+  font-family: var(--ui); font-size:15px; line-height:1.5;
+  -webkit-text-size-adjust:100%; -webkit-font-smoothing:antialiased;
 }
-h1,h2,h3{ margin:0; font-weight:700; text-wrap: balance; letter-spacing:-.01em; }
-button{ font: inherit; color: inherit; cursor: pointer; }
-input,select,textarea{ font: inherit; color: inherit; }
-:focus-visible{ outline: 2px solid var(--c-home); outline-offset: 2px; border-radius: 2px; }
+h1,h2,h3,h4{ margin:0; font-weight:700; letter-spacing:-.02em; text-wrap:balance; }
+button{ font:inherit; color:inherit; cursor:pointer; border:0; background:transparent; }
+input,select{ font:inherit; color:inherit; }
+:focus-visible{ outline:2px solid var(--brand); outline-offset:2px; border-radius:6px; }
+.n{ font-variant-numeric: tabular-nums; }
 
-.num{ font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing:-.02em; }
-.eyebrow{
-  font-size: 10.5px; font-weight:700; letter-spacing:.13em;
-  text-transform: uppercase; color: var(--muted);
-  font-family: var(--mono);
+.app{
+  max-width: var(--appw); margin:0 auto; min-height:100vh;
+  background: var(--bg); position:relative;
+  padding: 0 18px calc(var(--navh) + 26px);
 }
-.wrap{ max-width: var(--maxw); margin: 0 auto; padding: 0 18px; }
-
-/* ============================================================
-   TITLE BLOCK (drafting sheet header)
-   ============================================================ */
-.titleblock{
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
-  position: sticky; top:0; z-index: 40;
-}
-.tb-main{
-  display:flex; flex-wrap:wrap; align-items:flex-end; gap: 14px 28px;
-  padding: 14px 0 12px;
-}
-.tb-id{ display:flex; flex-direction:column; gap:2px; margin-inline-end:auto; }
-.tb-id h1{ font-size: 21px; line-height:1.15; }
-.tb-id .sub{ font-size: 12px; color: var(--muted); }
-
-.tb-field{ display:flex; flex-direction:column; gap:3px; }
-.tb-field label{ font-size:10.5px; font-weight:700; letter-spacing:.11em; text-transform:uppercase; color:var(--muted); font-family:var(--mono); }
-.tb-field input{
-  background: var(--surface-2); border:1px solid var(--line); border-radius: var(--r);
-  padding: 5px 8px; font-family: var(--mono); font-variant-numeric: tabular-nums;
-  font-size: 14px; width: 148px;
-}
-.tb-field .readout{ font-family: var(--mono); font-size: 15px; font-weight:700; }
-.tb-field .readout small{ font-size:11px; font-weight:400; color:var(--muted); }
-
-.icon-btn{
-  background: var(--surface-2); border:1px solid var(--line); border-radius: var(--r);
-  width:34px; height:34px; display:grid; place-items:center; padding:0;
-}
-.icon-btn:hover{ background: var(--surface-3); }
-
-.syncchip{
-  display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600;
-  background: var(--surface-2); border:1px solid var(--line); border-radius:20px;
-  padding:4px 11px; white-space:nowrap; color: var(--ink-2); cursor:default;
-}
-.syncchip i{ width:8px; height:8px; border-radius:50%; background: var(--line-strong); flex:none; }
-.syncchip[data-s="synced"] i{ background: var(--c-done); }
-.syncchip[data-s="saving"] i,
-.syncchip[data-s="connecting"] i{ background: var(--c-buy); animation: pulse 1.3s ease-in-out infinite; }
-.syncchip[data-s="offline"] i{ background: var(--c-home); }
-.syncchip[data-s="error"] i{ background: var(--c-alert); }
-@keyframes pulse{ 50%{ opacity:.25; } }
-
-/* budget scale bar */
-.scalebar{ padding-bottom: 12px; }
-.sb-track{
-  position: relative; height: 26px; background: var(--surface-2);
-  border: 1px solid var(--line); border-radius: var(--r); overflow: hidden;
-  display:flex;
-}
-.sb-seg{ height:100%; }
-.sb-seg.paid{ background: var(--c-done); }
-.sb-seg.plan{ background: var(--c-buy); opacity:.55; }
-.sb-seg.over{ background: var(--c-alert); }
-.sb-ticks{ position:absolute; inset:0; pointer-events:none; display:flex; }
-.sb-ticks i{ flex:1; border-inline-start:1px solid color-mix(in srgb, var(--ink) 12%, transparent); }
-.sb-ticks i:first-child{ border:0; }
-.sb-legend{
-  display:flex; flex-wrap:wrap; gap: 6px 18px; margin-top:7px; font-size:12px; color: var(--ink-2);
-  align-items:center;
-}
-.sb-legend span{ display:inline-flex; align-items:center; gap:6px; }
-.swatch{ width:10px; height:10px; border-radius:2px; flex:none; }
-.sb-legend b{ font-family: var(--mono); font-variant-numeric: tabular-nums; }
-.sb-legend .push{ margin-inline-start:auto; }
-
-/* ============================================================
-   TABS
-   ============================================================ */
-.tabs{
-  display:flex; gap:2px; border-bottom:1px solid var(--line);
-  background: var(--surface); overflow-x:auto; scrollbar-width:none;
-}
-.tabs::-webkit-scrollbar{ display:none; }
-.tab{
-  background: transparent; border:0; border-bottom: 2px solid transparent;
-  padding: 10px 16px; font-size:14px; font-weight:600; color: var(--muted);
-  white-space: nowrap; margin-bottom:-1px;
-}
-.tab:hover{ color: var(--ink); }
-.tab[aria-selected="true"]{ color: var(--ink); border-bottom-color: var(--ink); }
-.tab .badge{
-  font-family: var(--mono); font-size:11px; background: var(--surface-2);
-  border:1px solid var(--line); border-radius:20px; padding:0 6px; margin-inline-start:6px;
-  color: var(--ink-2);
+@media (min-width: 900px){
+  body{ background:
+    radial-gradient(1100px 620px at 78% -12%, color-mix(in srgb, var(--t-home) 16%, transparent), transparent 62%),
+    var(--bg); }
+  .app{ box-shadow: 0 0 0 1px var(--line), 0 30px 90px rgba(46,42,51,.10); background: var(--bg-2); }
 }
 
-/* ============================================================
-   KPI ROW
-   ============================================================ */
-.kpis{ display:grid; grid-template-columns: repeat(4,1fr); gap:1px; background: var(--line); border:1px solid var(--line); border-radius: var(--r); margin: 16px 0; overflow:hidden; }
-.kpi{ background: var(--surface); padding: 12px 14px; display:flex; flex-direction:column; gap:3px; min-width:0; }
-.kpi .k-label{ font-size:11px; font-weight:700; letter-spacing:.08em; color: var(--muted); font-family:var(--mono); text-transform:uppercase; }
-.kpi .k-val{ font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 21px; font-weight:700; letter-spacing:-.03em; }
-.kpi .k-note{ font-size:11.5px; color: var(--muted); }
-.kpi .k-val.good{ color: var(--c-done); }
-.kpi .k-val.warn{ color: var(--c-buy); }
-.kpi .k-val.bad{ color: var(--c-alert); }
-@media (max-width: 760px){ .kpis{ grid-template-columns: repeat(2,1fr); } }
-
-/* ============================================================
-   MAP
-   ============================================================ */
-.maplayout{ display:grid; grid-template-columns: minmax(0,1fr) minmax(0,320px); gap:14px; align-items:start; }
-@media (max-width: 940px){ .maplayout{ grid-template-columns: 1fr; } }
-
-.mapstage{
-  background:
-    linear-gradient(var(--grid) 1px, transparent 1px) 0 0/22px 22px,
-    linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/22px 22px,
-    var(--surface);
-  border:1px solid var(--line); border-radius: var(--r);
-  padding: 10px; position: relative;
+/* ---------- header ---------- */
+.apphead{ padding: 18px 0 10px; position:sticky; top:0; z-index:30; background: var(--bg); }
+@media (min-width:900px){ .apphead{ background: var(--bg-2); } }
+.ah-top{ display:flex; align-items:center; gap:10px; }
+.ah-date{ display:flex; align-items:center; gap:7px; font-size:13px; color:var(--muted); margin-inline-end:auto; }
+.ah-btn{
+  width:38px; height:38px; border-radius:50%; display:grid; place-items:center;
+  background: var(--card); box-shadow: var(--sh-sm); color: var(--ink-2);
 }
-.mapstage svg{ display:block; width:100%; height:auto; max-height: 86vh; margin:0 auto; }
+.ah-btn:hover{ color: var(--ink); }
+.ah-title{ margin-top:10px; display:flex; align-items:flex-end; gap:10px; }
+.ah-title h1{ font-size:29px; line-height:1.1; }
+.ah-title .sub{ font-size:12.5px; color:var(--muted); padding-bottom:5px; margin-inline-start:auto; text-align:end; }
 
-/* room index beside the plan */
-.roomlist{ border:1px solid var(--line); border-radius: var(--r); background: var(--surface); overflow:hidden; }
-.roomlist .rl-head{
-  padding:9px 13px; border-bottom:1px solid var(--line); background: var(--surface-2);
-  display:flex; align-items:baseline; gap:8px;
+/* ---------- tiles ---------- */
+.tiles{ display:grid; grid-template-columns:1fr 1fr; gap:13px; margin:18px 0 6px; }
+.tile{
+  position:relative; overflow:hidden; border-radius: var(--r-tile);
+  padding:15px 16px 16px; min-height:104px; color: var(--t-ink);
+  display:flex; flex-direction:column; justify-content:space-between; text-align:start;
+  box-shadow: var(--sh-sm);
 }
-.roomlist .rl-head .eyebrow{ margin-inline-end:auto; }
-.roomlist .rl-head .tot{ font-family:var(--mono); font-size:12px; color:var(--ink-2); font-weight:700; }
-.rl-row{
-  display:grid; grid-template-columns: 1fr 54px auto; gap:9px; align-items:center;
-  width:100%; text-align:start; background:transparent; border:0; border-bottom:1px solid var(--line);
-  padding: 7px 13px; font-size:13px;
+.tile .blob{
+  position:absolute; border-radius:50%; background: rgba(255,255,255,.19); pointer-events:none;
 }
-.rl-row:last-child{ border-bottom:0; }
-.rl-row:hover{ background: var(--surface-2); }
-.rl-row .rl-name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
-.rl-row .rl-bar{ height:7px; border-radius:4px; background: var(--surface-3); overflow:hidden; }
-.rl-row .rl-bar i{ display:block; height:100%; background: var(--c-done); border-radius:4px; }
-.rl-row .rl-n{ font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:12px; color:var(--ink-2); }
-.rl-row .rl-n.zero{ color: var(--muted); }
+.tile .blob.a{ width:86px; height:86px; top:-34px; inset-inline-start:-24px; }
+.tile .blob.b{ width:52px; height:52px; bottom:-22px; inset-inline-end:24px; background: rgba(255,255,255,.13); }
+.tile .ic{ position:absolute; top:14px; inset-inline-end:14px; opacity:.9; }
+.tile .tv{ font-size:26px; font-weight:700; letter-spacing:-.03em; position:relative; }
+.tile .tl{ font-size:13px; font-weight:600; opacity:.95; position:relative; }
+.tile .tn{ font-size:11.5px; opacity:.8; position:relative; margin-top:1px; }
+.tile.home{ background: var(--t-home); }
+.tile.buy{  background: var(--t-buy); }
+.tile.done{ background: var(--t-done); }
+.tile.alert{ background: var(--t-alert); }
+:root[data-theme="dark"] .tile, :root:not([data-theme="light"]) .tile{ box-shadow:none; }
+@media (prefers-color-scheme: light){ :root:not([data-theme="dark"]) .tile{ box-shadow: var(--sh-sm); } }
 
+/* ---------- generic card ---------- */
+.card{
+  background: var(--card); border-radius: var(--r-card); box-shadow: var(--sh);
+  padding:16px; margin-bottom:14px;
+}
+.card-h{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.card-h h3{ font-size:15.5px; }
+.card-h .side{ margin-inline-start:auto; font-size:12px; color:var(--muted); }
+.lede{ font-size:12.5px; color:var(--muted); margin:-4px 0 12px; }
+
+/* ---------- pill tabs ---------- */
+.pills{
+  display:flex; gap:4px; background: var(--card); border-radius: var(--r-pill);
+  padding:5px; box-shadow: var(--sh-sm); margin: 4px 0 16px;
+}
+.pills button{
+  flex:1; border-radius: var(--r-pill); padding:9px 6px; font-size:13px; font-weight:600;
+  color: var(--muted); transition: background .16s, color .16s;
+}
+.pills button[aria-selected="true"]{ background: var(--brand); color: var(--brand-ink); }
+
+/* ---------- floor plan ---------- */
+.planwrap{ background: var(--card); border-radius: var(--r-card); box-shadow: var(--sh); padding:12px 10px; position:relative; }
+.planwrap svg{ display:block; width:100%; height:auto; }
 .room{ cursor:pointer; }
-.room .rbase{ fill: var(--surface-2); }
-.room .rfill{ fill: var(--c-done); }
-.room .rwall{ fill:none; stroke: var(--ink); stroke-width:3.5; }
-.room.inset .rwall{ stroke-width:2; stroke-dasharray: 7 5; }
-.room:hover .rwall{ stroke: var(--c-home); stroke-width:5; }
-.room.sel .rwall{ stroke: var(--c-home); stroke-width:5.5; }
-.room .rname{ fill: var(--ink); font-size:17px; font-weight:700; text-anchor:middle; font-family: var(--ui); pointer-events:none; }
-.room .rmeta{ fill: var(--muted); font-size:14px; text-anchor:middle; font-family: var(--mono); pointer-events:none; }
-.room .rdot{ pointer-events:none; }
-.dimline{ stroke: var(--line-strong); stroke-width:1; }
-.dimtext{ fill: var(--muted); font-size:13px; font-family: var(--mono); text-anchor:middle; }
-.northarrow{ fill: var(--ink-2); }
-
-.maptip{
-  position:absolute; z-index:20; pointer-events:none; opacity:0; transform: translateY(4px);
-  transition: opacity .12s ease, transform .12s ease;
-  background: var(--surface); border:1px solid var(--line-strong); border-radius: var(--r);
-  box-shadow: var(--shadow-md); padding: 9px 11px; min-width: 172px; font-size:12.5px;
+.room .rb{ fill: var(--card-3); transition: fill .18s; }
+.room .rf{ fill: var(--d-done); }
+.room .rs{ fill:none; stroke: var(--line-2); stroke-width:2; }
+.room.inset .rs{ stroke-dasharray:6 5; }
+.room:hover .rs, .room:focus-visible .rs{ stroke: var(--brand); stroke-width:3; }
+.room.sel .rs{ stroke: var(--brand); stroke-width:3.5; }
+.room .rn{ fill: var(--ink); font-size:16px; font-weight:700; text-anchor:middle; pointer-events:none; }
+.room .rm{ fill: var(--muted); font-size:13px; text-anchor:middle; pointer-events:none; }
+.plantip{
+  position:absolute; z-index:10; pointer-events:none; opacity:0; transform:translateY(4px);
+  transition:opacity .14s, transform .14s;
+  background: var(--ink); color: var(--card); border-radius:12px; padding:8px 11px;
+  font-size:12px; box-shadow: var(--sh); min-width:150px;
 }
-.maptip.on{ opacity:1; transform: translateY(0); }
-.maptip h4{ margin:0 0 5px; font-size:13.5px; }
-.maptip .row{ display:flex; justify-content:space-between; gap:14px; color:var(--ink-2); }
-.maptip .row b{ font-family:var(--mono); font-variant-numeric:tabular-nums; }
+.plantip.on{ opacity:1; transform:translateY(0); }
+.plantip b{ font-variant-numeric:tabular-nums; }
+.plantip .r{ display:flex; justify-content:space-between; gap:12px; opacity:.85; }
+.plantip h5{ margin:0 0 4px; font-size:13px; }
+.legend{ display:flex; align-items:center; gap:9px; margin-top:11px; font-size:12px; color:var(--muted); }
+.legend .ramp{ width:64px; height:9px; border-radius:5px;
+  background: linear-gradient(to left, var(--card-3), var(--d-done)); flex:none; }
 
-.maplegend{ display:flex; flex-wrap:wrap; gap:8px 20px; align-items:center; margin-top:10px; font-size:12.5px; color:var(--ink-2); }
-.maplegend .ramp{ display:inline-flex; align-items:center; gap:7px; }
-.maplegend .ramp i{ width:56px; height:11px; border-radius:2px; border:1px solid var(--line);
-  background: linear-gradient(to left, color-mix(in srgb, var(--c-done) 5%, var(--surface-2)), color-mix(in srgb, var(--c-done) 45%, var(--surface-2))); }
-.hint{ font-size:12.5px; color: var(--muted); margin-top:8px; }
-
-/* ============================================================
-   DRAWER
-   ============================================================ */
-.scrim{ position:fixed; inset:0; background: rgba(10,14,17,.42); z-index:60; opacity:0; pointer-events:none; transition: opacity .18s ease; }
-.scrim.on{ opacity:1; pointer-events:auto; }
-.drawer{
-  position:fixed; z-index:61; top:0; bottom:0; left:0; right:auto; width: min(520px, 94vw);
-  background: var(--surface); border-right:1px solid var(--line);
-  box-shadow: var(--shadow-lg); display:flex; flex-direction:column;
-  transform: translateX(-100%); transition: transform .22s cubic-bezier(.3,.8,.4,1);
+/* ---------- room cards ---------- */
+.rcard{
+  display:flex; align-items:center; gap:14px; width:100%; text-align:start;
+  background: var(--card); border-radius: var(--r-card); box-shadow: var(--sh);
+  padding:15px 16px; margin-bottom:12px;
 }
-.drawer.on{ transform: translateX(0); }
-@media (max-width: 620px){
-  .drawer{ left:0; right:0; top:auto; bottom:0; height: 88vh; width:auto;
-    border-radius: 10px 10px 0 0; border:1px solid var(--line);
-    border-bottom:0; transform: translateY(100%); }
-  .drawer.on{ transform: translateY(0); }
+.rcard:hover{ box-shadow: 0 10px 26px rgba(46,42,51,.11); }
+.rcard .t{ flex:1; min-width:0; }
+.rcard h4{ font-size:17px; margin-bottom:2px; }
+.rcard .meta{ font-size:12px; color:var(--muted); }
+.rcard .foot{ display:flex; align-items:center; gap:8px; margin-top:11px; font-size:12px; color:var(--ink-2); flex-wrap:wrap; }
+.rcard .chipn{
+  display:inline-flex; align-items:center; gap:5px; background: var(--card-2);
+  border-radius: var(--r-pill); padding:3px 9px; font-variant-numeric:tabular-nums;
 }
-.dr-head{ padding: 14px 16px 12px; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:flex-start; }
-.dr-head .t{ flex:1; min-width:0; }
-.dr-head h2{ font-size:19px; }
-.dr-head .dims{ font-family: var(--mono); font-size:12px; color: var(--muted); margin-top:2px; }
-.dr-close{ background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r); width:32px;height:32px; display:grid;place-items:center; padding:0; flex:none; }
-
-.dr-stats{ display:grid; grid-template-columns: repeat(3,1fr); gap:1px; background:var(--line); border-bottom:1px solid var(--line); }
-.dr-stats div{ background: var(--surface); padding:9px 12px; }
-.dr-stats .l{ font-size:10.5px; font-family:var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
-.dr-stats .v{ font-family:var(--mono); font-variant-numeric:tabular-nums; font-weight:700; font-size:15px; }
-.dr-budget{ display:flex; align-items:center; gap:8px; padding:9px 16px; border-bottom:1px solid var(--line); font-size:12.5px; color:var(--ink-2); flex-wrap:wrap; }
-.dr-budget input{ width:96px; background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r); padding:3px 7px; font-family:var(--mono); font-variant-numeric:tabular-nums; }
-.minibar{ flex:1; min-width:110px; height:7px; border-radius:4px; background: var(--surface-2); border:1px solid var(--line); overflow:hidden; display:flex; }
-.minibar i{ display:block; height:100%; }
-
-.dr-body{ overflow-y:auto; flex:1; padding: 6px 0 90px; }
-
-/* item row */
-.item{ border-bottom:1px solid var(--line); padding: 10px 16px; display:flex; flex-direction:column; gap:8px; }
-.item.is-home{ background: color-mix(in srgb, var(--c-home) 5%, transparent); }
-.item.is-done{ background: color-mix(in srgb, var(--c-done) 6%, transparent); }
-.item-top{ display:flex; align-items:center; gap:10px; }
-.item-name{ flex:1; font-weight:600; min-width:0; border:0; background:transparent; padding:2px 0; border-bottom:1px dashed transparent; }
-.item-name:hover, .item-name:focus{ border-bottom-color: var(--line-strong); }
-.item.is-home .item-name{ color: var(--ink-2); }
-.item-del{ background:transparent; border:0; color:var(--muted); padding:2px 4px; font-size:16px; line-height:1; flex:none; }
-.item-del:hover{ color: var(--c-alert); }
-
-.seg{ display:inline-flex; background: var(--surface-2); border:1px solid var(--line); border-radius: var(--r); overflow:hidden; flex:none; }
-.seg button{ background:transparent; border:0; padding:4px 9px; font-size:12px; font-weight:600; color: var(--muted); white-space:nowrap; }
-.seg button + button{ border-inline-start:1px solid var(--line); }
-.seg button[aria-pressed="true"]{ color:#fff; }
-.seg button[data-s="home"][aria-pressed="true"]{ background: var(--c-home); }
-.seg button[data-s="buy"][aria-pressed="true"]{  background: var(--c-buy); }
-.seg button[data-s="done"][aria-pressed="true"]{ background: var(--c-done); }
-
-.item-fields{ display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; font-size:12px; color:var(--muted); }
-.f{ display:inline-flex; align-items:center; gap:5px; }
-.f input{ background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r); padding:3px 7px; font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:12.5px; }
-.f input.money{ width:82px; }
-.f input.store{ width:118px; font-family:var(--ui); }
-.f input.lead{ width:48px; }
-.delta{ font-family:var(--mono); font-weight:700; font-size:12px; }
-.delta.up{ color: var(--c-alert); }
-.delta.down{ color: var(--c-done); }
-
-.dr-foot{
-  position:absolute; inset-inline:0; bottom:0; padding:10px 16px;
-  background: var(--surface); border-top:1px solid var(--line); display:flex; gap:8px;
+.rcard .chipn i{ width:7px; height:7px; border-radius:50%; flex:none; }
+.ring{ position:relative; width:66px; height:66px; flex:none; }
+.ring svg{ width:100%; height:100%; transform:rotate(-90deg); }
+.ring .bgc{ fill:none; stroke: var(--card-3); stroke-width:7; }
+.ring .fgc{ fill:none; stroke: var(--d-done); stroke-width:7; stroke-linecap:round; transition: stroke-dasharray .5s cubic-bezier(.3,.8,.4,1); }
+.ring .lab{
+  position:absolute; inset:0; display:grid; place-items:center;
+  font-size:14px; font-weight:700; font-variant-numeric:tabular-nums;
 }
-.btn{
-  background: var(--ink); color: var(--paper); border:1px solid var(--ink);
-  border-radius: var(--r); padding:7px 14px; font-size:13.5px; font-weight:600;
-}
-.btn:hover{ opacity:.88; }
-.btn.ghost{ background: var(--surface-2); color: var(--ink); border-color: var(--line); }
-.btn.ghost:hover{ background: var(--surface-3); opacity:1; }
-.btn.sm{ padding:5px 10px; font-size:12.5px; }
 
-/* ============================================================
-   TABLES / LISTS
-   ============================================================ */
-.toolbar{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin: 16px 0 12px; }
-.toolbar input[type="search"]{
-  flex:1; min-width:170px; background: var(--surface); border:1px solid var(--line);
-  border-radius:var(--r); padding:7px 11px;
+/* ---------- timeline ---------- */
+.phase{ background: var(--card); border-radius: var(--r-card); box-shadow: var(--sh); padding:15px 16px; margin-bottom:13px; }
+.phase-h{ display:flex; align-items:flex-start; gap:11px; }
+.phase-dot{ width:12px; height:12px; border-radius:50%; margin-top:6px; flex:none; background: var(--line-2); }
+.phase.now  .phase-dot{ background: var(--d-buy); }
+.phase.late .phase-dot{ background: var(--d-alert); }
+.phase-h h4{ font-size:15.5px; }
+.phase-h .sum{ margin-inline-start:auto; font-size:13.5px; font-weight:700; font-variant-numeric:tabular-nums; }
+.phase .tag{
+  display:inline-block; font-size:11.5px; font-weight:600; border-radius: var(--r-pill);
+  padding:2px 9px; margin-top:5px; background: var(--card-2); color: var(--ink-2);
 }
-.toolbar select{ background: var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:7px 9px; }
-
-.tablewrap{ overflow-x:auto; border:1px solid var(--line); border-radius:var(--r); background: var(--surface); }
-table{ border-collapse: collapse; width:100%; min-width: 640px; font-size:13.5px; }
-th,td{ text-align:start; padding: 8px 12px; border-bottom:1px solid var(--line); white-space:nowrap; }
-th{ background: var(--surface-2); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-family:var(--mono); position:sticky; top:0; }
-td.n{ font-family:var(--mono); font-variant-numeric:tabular-nums; text-align:start; }
-tbody tr:hover{ background: var(--surface-2); }
-tr.clickable{ cursor:pointer; }
-tfoot td{ font-weight:700; background: var(--surface-2); font-family:var(--mono); }
-
-.pill{ display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:20px; border:1px solid; white-space:nowrap; }
-.pill.home{ color:var(--c-home); border-color: color-mix(in srgb, var(--c-home) 45%, transparent); background: color-mix(in srgb, var(--c-home) 10%, transparent); }
-.pill.buy{  color:var(--c-buy);  border-color: color-mix(in srgb, var(--c-buy) 45%, transparent);  background: color-mix(in srgb, var(--c-buy) 10%, transparent); }
-.pill.done{ color:var(--c-done); border-color: color-mix(in srgb, var(--c-done) 45%, transparent); background: color-mix(in srgb, var(--c-done) 10%, transparent); }
-.pill.late{ color:var(--c-alert); border-color: color-mix(in srgb, var(--c-alert) 45%, transparent); background: color-mix(in srgb, var(--c-alert) 10%, transparent); }
-
-/* ============================================================
-   TIMELINE
-   ============================================================ */
-.tl{ display:flex; flex-direction:column; gap:0; margin: 4px 0 40px; border-inline-start:2px solid var(--line); padding-inline-start:0; }
-.tl-group{ position:relative; padding: 0 26px 22px 0; }
-.tl-group::before{
-  content:""; position:absolute; inset-inline-start:-7px; top:6px; width:12px; height:12px;
-  border-radius:50%; background: var(--surface); border:2px solid var(--line-strong);
-}
-.tl-group.urgent::before{ background: var(--c-alert); border-color: var(--c-alert); }
-.tl-group.soon::before{ background: var(--c-buy); border-color: var(--c-buy); }
-.tl-head{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
-.tl-head h3{ font-size:16px; }
-.tl-head .when{ font-family:var(--mono); font-size:12px; color:var(--muted); }
-.tl-head .sum{ font-family:var(--mono); font-size:12.5px; color:var(--ink-2); margin-inline-start:auto; }
-.tl-note{ margin:0 0 10px; font-size:12.5px; color:var(--muted); max-width:70ch; }
-.tl-win{
-  display:inline-block; font-family:var(--mono); font-size:11.5px; color:var(--ink-2);
-  background: var(--surface-2); border:1px solid var(--line); border-radius:3px;
-  padding:1px 7px; margin-inline-start:4px; white-space:nowrap;
-}
-.tl-group.urgent .tl-win{ color: var(--c-alert); border-color: color-mix(in srgb, var(--c-alert) 40%, transparent); }
-.tl-items{ display:flex; flex-wrap:wrap; gap:6px; }
+.phase.now  .tag{ background: color-mix(in srgb, var(--d-buy) 16%, transparent);   color: var(--d-buy); }
+.phase.late .tag{ background: color-mix(in srgb, var(--d-alert) 16%, transparent); color: var(--d-alert); }
+.phase .note{ font-size:12.5px; color:var(--muted); margin:9px 0 0; }
+.phase .win{ font-size:12px; color:var(--ink-2); font-variant-numeric:tabular-nums; margin-top:4px; }
+.chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
 .chip{
-  display:inline-flex; align-items:center; gap:7px; background: var(--surface);
-  border:1px solid var(--line); border-radius: 20px; padding:4px 11px; font-size:12.5px;
+  display:inline-flex; align-items:center; gap:7px; background: var(--card-2);
+  border-radius: var(--r-pill); padding:5px 11px; font-size:12.5px;
 }
-.chip b{ font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--ink-2); font-weight:600; }
-.chip .rm{ color: var(--muted); font-size:11.5px; }
+.chip b{ font-variant-numeric:tabular-nums; color: var(--ink-2); }
+.chip .rm{ color:var(--muted); font-size:11.5px; }
 
-/* ============================================================
-   MONEY
-   ============================================================ */
-.bars{ display:flex; flex-direction:column; gap:0; border:1px solid var(--line); border-radius:var(--r); background:var(--surface); overflow:hidden; }
-.bar-row{ display:grid; grid-template-columns: 168px 1fr 150px; gap:12px; align-items:center; padding:9px 14px; border-bottom:1px solid var(--line); }
-.bar-row:last-child{ border-bottom:0; }
-.bar-row:hover{ background: var(--surface-2); }
-.bar-name{ font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.bar-track{ position:relative; height:16px; background: var(--surface-2); border-radius:3px; display:flex; gap:2px; overflow:hidden; }
-.bar-track i{ display:block; height:100%; border-radius: 0; }
-.bar-track i:last-of-type{ border-start-end-radius:4px; border-end-end-radius:4px; }
-.bar-budget{ position:absolute; top:-3px; bottom:-3px; width:2px; background: var(--ink); opacity:.75; }
-.bar-val{ font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:12.5px; text-align:start; color:var(--ink-2); }
-.bar-val .over{ color: var(--c-alert); font-weight:700; }
-@media (max-width: 700px){ .bar-row{ grid-template-columns: 1fr; gap:5px; } .bar-val{ text-align:start; } }
+/* ---------- charts ---------- */
+.chart{ width:100%; height:auto; display:block; overflow:visible; }
+.grid-l{ stroke: var(--line); stroke-width:1; }
+.axis-t{ fill: var(--muted); font-size:11px; direction:ltr; }
+.bar-a{ fill: var(--d-home); }
+.bar-b{ fill: var(--d-buy); }
+.area-f{ fill: var(--d-buy); opacity:.16; }
+.area-s{ fill:none; stroke: var(--d-buy); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
+.dot-e{ fill: var(--d-buy); stroke: var(--card); stroke-width:2; }
+.keys{ display:flex; gap:16px; justify-content:center; margin-top:10px; font-size:12px; color:var(--ink-2); }
+.keys span{ display:inline-flex; align-items:center; gap:6px; }
+.keys i{ width:9px; height:9px; border-radius:3px; flex:none; }
 
-.split{ display:grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
-.card{ background: var(--surface); border:1px solid var(--line); border-radius:var(--r); padding: 14px 16px; }
-.card h3{ font-size:15px; margin-bottom:10px; }
-.card .lines{ display:flex; flex-direction:column; gap:8px; }
-.lines .l{ display:flex; align-items:center; gap:9px; font-size:13px; }
-.lines .l .nm{ flex:1; }
-.lines .l b{ font-family:var(--mono); font-variant-numeric:tabular-nums; }
+.rowbar{ display:grid; grid-template-columns: 1fr 96px; gap:10px; align-items:center; padding:9px 0; border-bottom:1px solid var(--line); }
+.rowbar:last-child{ border-bottom:0; }
+.rowbar .nm{ font-size:13px; font-weight:600; margin-bottom:5px; }
+.rowbar .track{ position:relative; height:9px; border-radius:5px; background: var(--card-3); display:flex; gap:2px; overflow:hidden; }
+.rowbar .track i{ display:block; height:100%; }
+.rowbar .bmark{ position:absolute; top:-3px; bottom:-3px; width:2px; background: var(--ink); opacity:.6; }
+.rowbar .v{ font-size:12.5px; font-variant-numeric:tabular-nums; color:var(--ink-2); text-align:start; }
+.rowbar .v .over{ color: var(--d-alert); font-weight:700; }
 
-.section{ margin: 22px 0; }
-.section > h2{ font-size:16px; margin-bottom:10px; }
-.section > p.lede{ color: var(--muted); font-size:13px; margin: -6px 0 12px; max-width: 62ch; }
+/* ---------- bottom nav ---------- */
+.tabbar{
+  position:fixed; bottom:0; inset-inline:0; height: var(--navh); z-index:40;
+  max-width: var(--appw); margin:0 auto;
+  background: var(--card); border-radius: 26px 26px 0 0; box-shadow: 0 -6px 24px rgba(46,42,51,.10);
+  display:flex; align-items:center; justify-content:space-around; padding:0 12px;
+}
+.tabbar button{ display:grid; place-items:center; gap:3px; color: var(--muted); padding:6px 10px; border-radius:14px; }
+.tabbar button .cap{ font-size:10.5px; font-weight:600; }
+.tabbar button[aria-selected="true"]{ color: var(--brand); }
+.tabbar button.fab{
+  width:56px; height:56px; border-radius:50%; background: var(--brand); color: var(--brand-ink);
+  display:grid; place-items:center; box-shadow: var(--sh-fab); margin-top:-22px; flex:none;
+}
+.tabbar button.fab:active{ transform: scale(.95); }
 
-.panel{ display:none; }
-.panel.on{ display:block; }
+/* ---------- sheet ---------- */
+.scrim{ position:fixed; inset:0; background: rgba(24,20,28,.45); z-index:50; opacity:0; pointer-events:none; transition:opacity .2s; }
+.scrim.on{ opacity:1; pointer-events:auto; }
+.sheet{
+  position:fixed; inset-inline:0; bottom:0; z-index:51; max-width: var(--appw); margin:0 auto;
+  background: var(--card); border-radius: 26px 26px 0 0; box-shadow: var(--sh-lg);
+  max-height: 90vh; display:flex; flex-direction:column;
+  transform: translateY(100%); transition: transform .26s cubic-bezier(.3,.85,.35,1);
+}
+.sheet.on{ transform: translateY(0); }
+.sh-grab{ width:42px; height:5px; border-radius:3px; background: var(--line-2); margin:10px auto 4px; flex:none; }
+.sh-head{ padding: 6px 18px 14px; display:flex; align-items:center; gap:13px; flex:none; }
+.sh-head .t{ flex:1; min-width:0; }
+.sh-head h3{ font-size:20px; }
+.sh-head .meta{ font-size:12px; color:var(--muted); margin-top:2px; }
+.sh-close{ width:34px; height:34px; border-radius:50%; background: var(--card-2); display:grid; place-items:center; flex:none; color:var(--ink-2); }
+.sh-stats{ display:flex; gap:9px; padding:0 18px 12px; flex:none; }
+.sh-stats div{ flex:1; background: var(--card-2); border-radius: var(--r-sm); padding:9px 11px; }
+.sh-stats .l{ font-size:10.5px; color:var(--muted); font-weight:600; }
+.sh-stats .v{ font-size:15px; font-weight:700; font-variant-numeric:tabular-nums; margin-top:1px; }
+.sh-budget{ display:flex; align-items:center; gap:9px; padding:0 18px 13px; font-size:12.5px; color:var(--ink-2); flex:none; flex-wrap:wrap; }
+.sh-budget input{
+  width:94px; background: var(--card-2); border:0; border-radius:10px; padding:6px 10px;
+  font-variant-numeric:tabular-nums; font-size:13px;
+}
+.sh-body{ overflow-y:auto; flex:1; padding: 2px 18px 18px; -webkit-overflow-scrolling:touch; }
 
-/* toast */
+/* ---------- item row ---------- */
+.item{ display:flex; align-items:flex-start; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
+.item:last-child{ border-bottom:0; }
+.tick{
+  width:24px; height:24px; border-radius:8px; border:2px solid var(--line-2); flex:none; margin-top:2px;
+  display:grid; place-items:center; color:transparent; transition: background .16s, border-color .16s, color .16s;
+}
+.item.is-done .tick{ background: var(--d-done); border-color: var(--d-done); color:#fff; }
+.item.is-home .tick{ background: var(--d-home); border-color: var(--d-home); color:#fff; }
+.item .body{ flex:1; min-width:0; }
+.item .nm{
+  width:100%; background:transparent; border:0; padding:0; font-size:14.5px; font-weight:600;
+  border-bottom:1px dashed transparent;
+}
+.item .nm:hover, .item .nm:focus{ border-bottom-color: var(--line-2); }
+.item.is-done .nm{ text-decoration: line-through; color: var(--muted); }
+.item.is-home .nm{ color: var(--ink-2); }
+.item .sub{ display:flex; align-items:center; gap:8px; margin-top:7px; flex-wrap:wrap; font-size:12px; color:var(--muted); }
+.item .price{
+  width:74px; background: var(--card-2); border:0; border-radius:9px; padding:4px 8px;
+  font-size:12.5px; font-variant-numeric:tabular-nums;
+}
+.item .store{ width:96px; background: var(--card-2); border:0; border-radius:9px; padding:4px 8px; font-size:12.5px; }
+.item .due{ font-variant-numeric:tabular-nums; }
+.item .due.late{ color: var(--d-alert); font-weight:700; }
+.item .del{ color: var(--muted); font-size:19px; line-height:1; padding:2px 4px; flex:none; }
+.item .del:hover{ color: var(--d-alert); }
+.seg{ display:inline-flex; background: var(--card-2); border-radius: var(--r-pill); padding:3px; margin-top:9px; }
+.seg button{ border-radius: var(--r-pill); padding:5px 11px; font-size:11.5px; font-weight:600; color: var(--muted); }
+.seg button[aria-pressed="true"]{ color:#fff; }
+.seg button[data-s="home"][aria-pressed="true"]{ background: var(--d-home); }
+.seg button[data-s="buy"][aria-pressed="true"]{  background: var(--d-buy); }
+.seg button[data-s="done"][aria-pressed="true"]{ background: var(--d-done); }
+
+.btn{ background: var(--brand); color: var(--brand-ink); border-radius: var(--r-pill); padding:11px 20px; font-size:14px; font-weight:600; }
+.btn.ghost{ background: var(--card-2); color: var(--ink); }
+.btn.sm{ padding:7px 14px; font-size:12.5px; }
+.btn.block{ width:100%; }
+
+.field{ margin-bottom:13px; }
+.field label{ display:block; font-size:12px; color:var(--muted); font-weight:600; margin-bottom:5px; }
+.field input, .field select{
+  width:100%; background: var(--card-2); border:0; border-radius: var(--r-sm); padding:11px 13px; font-size:14.5px;
+}
+.settings-row{ display:flex; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid var(--line); font-size:14px; }
+.settings-row:last-of-type{ border-bottom:0; }
+.settings-row .lbl{ flex:1; }
+.settings-row input{ width:130px; background: var(--card-2); border:0; border-radius:10px; padding:8px 11px; font-variant-numeric:tabular-nums; text-align:start; }
+
+.view{ display:none; }
+.view.on{ display:block; animation: rise .28s cubic-bezier(.3,.8,.4,1); }
+@keyframes rise{ from{ opacity:0; transform: translateY(9px); } }
+
 .toast{
-  position:fixed; inset-inline:0; bottom:22px; margin:auto; width:max-content; max-width:90vw;
-  background: var(--ink); color: var(--paper); padding:9px 16px; border-radius:20px;
-  font-size:13.5px; box-shadow: var(--shadow-md); z-index:90;
-  opacity:0; transform: translateY(10px); transition: opacity .18s, transform .18s; pointer-events:none;
+  position:fixed; bottom: calc(var(--navh) + 16px); inset-inline:0; margin:auto; width:max-content; max-width:86vw;
+  background: var(--ink); color: var(--card); padding:10px 18px; border-radius: var(--r-pill);
+  font-size:13.5px; z-index:80; opacity:0; transform: translateY(8px);
+  transition: opacity .2s, transform .2s; pointer-events:none; box-shadow: var(--sh);
 }
 .toast.on{ opacity:1; transform: translateY(0); }
+.empty{ text-align:center; color:var(--muted); font-size:13.5px; padding:34px 12px; }
 
-/* modal */
-.modal{ position:fixed; inset:0; z-index:80; display:none; place-items:center; padding:18px; background: rgba(10,14,17,.5); }
-.modal.on{ display:grid; }
-.modal .box{ background: var(--surface); border:1px solid var(--line); border-radius:6px; box-shadow: var(--shadow-lg); width:min(560px,100%); padding:18px; }
-.modal h3{ font-size:16px; margin-bottom:8px; }
-.modal p{ font-size:13px; color:var(--muted); margin:0 0 10px; }
-.modal textarea{
-  width:100%; height:180px; background: var(--surface-2); border:1px solid var(--line);
-  border-radius:var(--r); padding:10px; font-family:var(--mono); font-size:11.5px; resize:vertical;
-}
-.modal .acts{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
-
-footer.sheet{
-  border-top:1px solid var(--line); background: var(--surface); margin-top:30px;
-  padding: 16px 0 26px; font-size:12px; color: var(--muted);
-}
-footer.sheet .row{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
-footer.sheet .row .push{ margin-inline-start:auto; }
-
-@media (prefers-reduced-motion: reduce){
-  *{ transition-duration: .01ms !important; animation-duration:.01ms !important; }
-}
+@media (prefers-reduced-motion: reduce){ *{ transition-duration:.01ms !important; animation-duration:.01ms !important; } }
 </style>
 
-<header class="titleblock">
-  <div class="wrap">
-    <div class="tb-main">
-      <div class="tb-id">
-        <div class="eyebrow">תוכנית קניות · דירת 5 חדרים</div>
-        <h1>הבית החדש</h1>
-        <div class="sub" id="planSub">מפה אינטראקטיבית, רשימות לפי חדר ומעקב תקציב</div>
-      </div>
-
-      <div class="tb-field">
-        <label for="moveIn">תאריך כניסה</label>
-        <input type="date" id="moveIn">
-      </div>
-
-      <div class="tb-field">
-        <label>נותרו</label>
-        <div class="readout" id="countdown">—</div>
-      </div>
-
-      <div class="tb-field">
-        <label for="budget">תקציב כולל</label>
-        <input type="number" id="budget" min="0" step="1000">
-      </div>
-
-      <div class="tb-field">
-        <label>סנכרון</label>
-        <span class="syncchip" id="syncChip" data-s="local"><i></i><span class="lbl">מקומי בלבד</span></span>
-      </div>
-
-      <button class="icon-btn" id="themeBtn" title="החלפת מצב תצוגה" aria-label="החלפת מצב תצוגה">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>
-        </svg>
+<div class="app">
+  <header class="apphead">
+    <div class="ah-top">
+      <span class="ah-date">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+        <span id="hdDate">—</span>
+      </span>
+      <button class="ah-btn" id="settingsBtn" aria-label="הגדרות">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 19l-.1.1A2 2 0 1 1 5 16.3l.1-.1A1.6 1.6 0 0 0 4 13.6H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 5.2 7l-.1-.1A2 2 0 1 1 7.9 4.1L8 4.2a1.6 1.6 0 0 0 2.7-1.1V3a2 2 0 1 1 4 0v.1A1.6 1.6 0 0 0 17.4 4.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/></svg>
+      </button>
+      <button class="ah-btn" id="themeBtn" aria-label="החלפת מצב תצוגה">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
       </button>
     </div>
-
-    <div class="scalebar">
-      <div class="sb-track" id="sbTrack">
-        <div class="sb-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-      </div>
-      <div class="sb-legend" id="sbLegend"></div>
+    <div class="ah-title">
+      <h1 id="hdTitle">הבית החדש</h1>
+      <span class="sub" id="hdSub"></span>
     </div>
-  </div>
-
-  <nav class="tabs wrap" role="tablist" aria-label="תצוגות">
-    <button class="tab" role="tab" data-panel="map"      aria-selected="true">מפה</button>
-    <button class="tab" role="tab" data-panel="items"    aria-selected="false">כל הפריטים <span class="badge" id="badgeItems"></span></button>
-    <button class="tab" role="tab" data-panel="timeline" aria-selected="false">ציר זמן <span class="badge" id="badgeTl"></span></button>
-    <button class="tab" role="tab" data-panel="money"    aria-selected="false">כספים</button>
-  </nav>
-</header>
-
-<main class="wrap">
-
-  <div class="kpis" id="kpis"></div>
+  </header>
 
   <!-- ============ MAP ============ -->
-  <section class="panel on" id="panel-map" role="tabpanel">
-    <div class="maplayout">
-      <div class="mapstage" id="mapStage">
-        <div class="maptip" id="mapTip"></div>
-        <svg id="plan" viewBox="-40 -80 800 1360" role="img" aria-label="תוכנית הדירה. לחיצה על חדר פותחת את רשימת הפריטים שלו.">
-          <g id="planRooms"></g>
-          <g id="planDims"></g>
-        </svg>
-      </div>
-      <div class="roomlist">
-        <div class="rl-head">
-          <span class="eyebrow">מפתח חדרים</span>
-          <span class="tot" id="rlTot"></span>
-        </div>
-        <div id="roomList"></div>
-      </div>
+  <section class="view on" id="v-map">
+    <div class="tiles" id="tiles"></div>
+    <div class="planwrap">
+      <div class="plantip" id="planTip"></div>
+      <svg id="plan" viewBox="-14 -14 708 1252" role="img" aria-label="תוכנית הדירה. לחיצה על חדר פותחת את רשימת הפריטים שלו."></svg>
     </div>
-    <div class="maplegend">
-      <span class="ramp"><i></i> מידת ההשלמה של החדר — ככל שכהה יותר, יותר פריטים סגורים</span>
-      <span style="display:inline-flex;align-items:center;gap:7px"><span class="swatch" style="background:var(--c-home)"></span> נבחר חדר</span>
-    </div>
-    <p class="hint">לחיצה על חדר פותחת את רשימת המוצרים שלו. הפריטים והמחירים הם נקודת פתיחה — ערוך, מחק והוסף חופשי.</p>
+    <div class="legend"><span class="ramp"></span> ככל שהחדר כהה יותר, יותר פריטים בו כבר סגורים</div>
   </section>
 
-  <!-- ============ ITEMS ============ -->
-  <section class="panel" id="panel-items" role="tabpanel">
-    <div class="toolbar">
-      <input type="search" id="q" placeholder="חיפוש פריט, חדר או חנות…" aria-label="חיפוש">
-      <select id="fRoom" aria-label="סינון לפי חדר"></select>
-      <select id="fStatus" aria-label="סינון לפי סטטוס">
-        <option value="">כל הסטטוסים</option>
-        <option value="home">לוקחים מהבית</option>
-        <option value="buy">צריך לקנות</option>
-        <option value="done">נקנה</option>
-      </select>
-      <select id="fSort" aria-label="מיון">
-        <option value="room">מיון: לפי חדר</option>
-        <option value="price">מיון: מהיקר לזול</option>
-        <option value="order">מיון: לפי מועד הזמנה</option>
-      </select>
+  <!-- ============ ROOMS ============ -->
+  <section class="view" id="v-rooms">
+    <div class="pills" id="roomPills">
+      <button aria-selected="true" data-f="all">הכל</button>
+      <button aria-selected="false" data-f="open">נותרו</button>
+      <button aria-selected="false" data-f="done">הושלמו</button>
     </div>
-    <div class="tablewrap">
-      <table id="itemsTable">
-        <thead>
-          <tr>
-            <th>פריט</th><th>חדר</th><th>סטטוס</th><th>הערכה</th><th>בפועל</th><th>פער</th><th>להזמין עד</th><th>חנות</th>
-          </tr>
-        </thead>
-        <tbody id="itemsBody"></tbody>
-        <tfoot id="itemsFoot"></tfoot>
-      </table>
-    </div>
-    <p class="hint">לחיצה על שורה פותחת את החדר שלה לעריכה.</p>
+    <div id="roomCards"></div>
   </section>
 
   <!-- ============ TIMELINE ============ -->
-  <section class="panel" id="panel-timeline" role="tabpanel">
-    <div class="section">
-      <h2>מתי להזמין מה</h2>
-      <p class="lede">כל פריט נושא זמן אספקה משוער. התאריכים נספרים אחורה מתאריך הכניסה, כך שהתקרה מתעדכנת לבד כשאתה משנה אותו. מוצגים רק פריטים שעדיין צריך לקנות.</p>
-      <div class="tl" id="tlList"></div>
-    </div>
+  <section class="view" id="v-time">
+    <p class="lede">כל פריט נושא זמן אספקה. השלבים נספרים אחורה מתאריך הכניסה, כך שהם זזים לבד כשאתה משנה אותו. מוצגים רק פריטים שעדיין צריך לקנות.</p>
+    <div id="phases"></div>
   </section>
 
   <!-- ============ MONEY ============ -->
-  <section class="panel" id="panel-money" role="tabpanel">
-    <div class="section">
-      <h2>תקציב מול צפי לפי חדר</h2>
-      <p class="lede">הפס מציג כמה כבר שולם וכמה עוד צפוי. הקו האנכי הכהה הוא תקציב החדר.</p>
-      <div class="bars" id="roomBars"></div>
+  <section class="view" id="v-money">
+    <div class="tiles" id="moneyTiles"></div>
+
+    <div class="card">
+      <div class="card-h"><h3>הוצאה לפי שלב הזמנה</h3></div>
+      <svg class="chart" id="phaseChart" viewBox="0 0 340 180" role="img" aria-label="הוצאה לפי שלב הזמנה"></svg>
+      <div class="keys">
+        <span><i style="background:var(--d-home)"></i> שולם</span>
+        <span><i style="background:var(--d-buy)"></i> עוד מתוכנן</span>
+      </div>
     </div>
 
-    <div class="section split">
-      <div class="card">
-        <h3>חלוקה לפי סטטוס</h3>
-        <div class="lines" id="statusSplit"></div>
-      </div>
-      <div class="card">
-        <h3>עשרת הפריטים היקרים</h3>
-        <div class="lines" id="topItems"></div>
-      </div>
+    <div class="card">
+      <div class="card-h"><h3>הוצאה מצטברת</h3><span class="side" id="cumSide"></span></div>
+      <svg class="chart" id="cumChart" viewBox="0 0 340 170" role="img" aria-label="הוצאה מצטברת לאורך חודשי ההזמנה"></svg>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h3>תקציב מול צפי לפי חדר</h3></div>
+      <p class="lede">הקו הכהה הוא תקציב החדר.</p>
+      <div id="roomBars"></div>
     </div>
   </section>
-</main>
 
-<footer class="sheet">
-  <div class="wrap row">
-    <button class="btn ghost sm" id="shareBtn" hidden>העתקת קישור לשיתוף</button>
-    <button class="btn ghost sm" id="exportBtn">גיבוי לקובץ</button>
-    <button class="btn ghost sm" id="codeBtn">קוד סנכרון</button>
-    <button class="btn ghost sm" id="importBtn">ייבוא</button>
-    <button class="btn ghost sm" id="resetBtn">איפוס לרשימה המקורית</button>
-    <span class="push" id="savedAt"></span>
-  </div>
-</footer>
+  <nav class="tabbar" role="tablist">
+    <button role="tab" data-v="map" aria-selected="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M9 4 3 7v13l6-3 6 3 6-3V4l-6 3-6-3Z"/><path d="M9 4v13M15 7v13"/></svg>
+      <span class="cap">מפה</span>
+    </button>
+    <button role="tab" data-v="rooms" aria-selected="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      <span class="cap">חדרים</span>
+    </button>
+    <button class="fab" id="fab" aria-label="הוספת פריט">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <button role="tab" data-v="time" aria-selected="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <span class="cap">ציר זמן</span>
+    </button>
+    <button role="tab" data-v="money" aria-selected="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 4 5-7 4 5"/><path d="M3 21h18"/></svg>
+      <span class="cap">כספים</span>
+    </button>
+  </nav>
+</div>
 
 <div class="scrim" id="scrim"></div>
 
-<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drTitle">
-  <div class="dr-head">
-    <div class="t">
-      <div class="eyebrow" id="drEyebrow">חדר</div>
-      <h2 id="drTitle">—</h2>
-      <div class="dims" id="drDims"></div>
-    </div>
-    <button class="dr-close" id="drClose" aria-label="סגירה">
+<aside class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="shTitle">
+  <div class="sh-grab"></div>
+  <div class="sh-head">
+    <div class="t"><h3 id="shTitle">—</h3><div class="meta" id="shMeta"></div></div>
+    <button class="sh-close" id="shClose" aria-label="סגירה">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
   </div>
-  <div class="dr-stats" id="drStats"></div>
-  <div class="dr-budget">
-    <label for="drBudget">תקציב לחדר</label>
-    <input type="number" id="drBudget" min="0" step="500">
-    <span class="num" id="drBudgetNote"></span>
-    <span class="minibar" id="drMini"></span>
-  </div>
-  <div class="dr-body" id="drBody"></div>
-  <div class="dr-foot">
-    <button class="btn" id="addItem">הוספת פריט</button>
-    <button class="btn ghost" id="allHome">סמן הכל כלוקחים מהבית</button>
-  </div>
+  <div id="shExtra"></div>
+  <div class="sh-body" id="shBody"></div>
 </aside>
-
-<div class="modal" id="modal">
-  <div class="box">
-    <h3 id="mTitle">קוד סנכרון</h3>
-    <p id="mDesc"></p>
-    <textarea id="mText" spellcheck="false"></textarea>
-    <div class="acts">
-      <button class="btn" id="mPrimary">העתקה</button>
-      <button class="btn ghost" id="mClose">סגירה</button>
-    </div>
-  </div>
-</div>
 
 <div class="toast" id="toast"></div>
 
@@ -669,13 +522,13 @@ footer.sheet .row .push{ margin-inline-start:auto; }
 "use strict";
 
 /* ============================================================
-   ROOM GEOMETRY — redrawn from the architect's plan
+   ROOMS — redrawn from the architect's plan
    ============================================================ */
 const ROOMS = [
   { id:"balcony",  name:"מרפסת שמש",         area:21.0,  dims:"525 × 505 ס״מ", x:315, y:15,   w:365, h:255 },
   { id:"living",   name:"סלון",               area:22.0,  dims:"רוחב 698 ס״מ",  x:300, y:285,  w:380, h:305 },
   { id:"dining",   name:"פינת אוכל",          area:9.5,   dims:"חלל פתוח לסלון", x:312, y:445, w:170, h:135, inset:true },
-  { id:"kitchen",  name:"מטבח",               area:12.0,  dims:"372 × 178 ס״מ + אי 315", x:40, y:330, w:250, h:260 },
+  { id:"kitchen",  name:"מטבח",               area:12.0,  dims:"372 × 178 ס״מ ואי 315", x:40, y:330, w:250, h:260 },
   { id:"mamad",    name:"ממ״ד / חדר שינה 4",  area:9.0,   dims:"388 × 360 ס״מ", x:40,  y:600,  w:200, h:175 },
   { id:"hall",     name:"מסדרון",             area:8.5,   dims:"ציר מעבר מרכזי", path:"M250,600 H475 V775 H395 V930 H250 Z", lx:322, ly:700 },
   { id:"bed3",     name:"חדר שינה 3",         area:11.05, dims:"388 × 290 ס״מ", x:485, y:600,  w:195, h:180 },
@@ -686,14 +539,11 @@ const ROOMS = [
   { id:"ensuite",  name:"מקלחת הורים",        area:4.2,   dims:"195 × 190 ס״מ", x:490, y:790,  w:190, h:120 },
   { id:"toilet",   name:"שירותי אורחים",      area:2.2,   dims:"150 × 90 ס״מ",  x:490, y:920,  w:190, h:95, small:true },
   { id:"master",   name:"חדר שינה הורים",     area:14.0,  dims:"388 × 365 ס״מ", x:490, y:1025, w:190, h:185 },
-  { id:"general",  name:"כללי ותשתיות",       area:null,  dims:"עבודות, שירותים והוצאות שאינן שייכות לחדר אחד", noMap:true }
+  { id:"general",  name:"כללי ותשתיות",       area:null,  dims:"עבודות ושירותים שאינם שייכים לחדר אחד", noMap:true }
 ];
 const ROOM_BY_ID = Object.fromEntries(ROOMS.map(r=>[r.id,r]));
 
-/* ============================================================
-   SEED CATALOG — [name, estimate ₪, lead weeks, default status]
-   Prices are mid-market Israeli ranges, meant as a starting point.
-   ============================================================ */
+/* [name, estimate ₪, lead weeks, default status] */
 const SEED = {
   kitchen: [
     ["מקרר",4500,4,"buy"], ["תנור בילט אין",2200,4,"buy"], ["כיריים",1800,4,"buy"],
@@ -768,848 +618,610 @@ const SEED = {
   ]
 };
 
-/* Ordering phases, counted backwards from the move-in date, in weeks. */
 const PHASES = [
   { id:"carpentry", lo:16, hi:999, name:"נגרות וארונות",
-    note:"זמן הייצור הארוך ביותר בכל המהלך. אם משהו יאחר, זה יהיה כאן — לכן מתחילים מזה." },
+    note:"זמן הייצור הארוך ביותר בכל המהלך. אם משהו יאחר, זה יהיה כאן." },
   { id:"big", lo:10, hi:15, name:"ריהוט גדול, מזגנים וחדרי רחצה",
-    note:"פריטים שמיוצרים או מיובאים לפי הזמנה, בדרך כלל חודשיים ומעלה." },
+    note:"פריטים שמיוצרים או מיובאים לפי הזמנה." },
   { id:"works", lo:6, hi:9, name:"מיטות, עבודות בדירה ורשתות",
-    note:"חשמל ואינסטלציה קודמים לצביעה, והצביעה קודמת לווילונות ולריהוט." },
+    note:"חשמל ואינסטלציה קודמים לצביעה, והצביעה קודמת לווילונות." },
   { id:"elec", lo:4, hi:5, name:"מוצרי חשמל, וילונות ותאורה",
     note:"נכנסים אחרי שהעבודות בדירה הסתיימו." },
   { id:"move", lo:2, hi:3, name:"הובלה, הרכבות וטקסטיל",
     note:"השבועות הצפופים. כדאי לתאם הובלה והרכבות מראש." },
   { id:"last", lo:0, hi:1, name:"השלמות של הרגע האחרון",
-    note:"דברים שאפשר לקנות אחרי הכניסה בלי להיתקע." }
+    note:"אפשר לקנות גם אחרי הכניסה בלי להיתקע." }
 ];
-function phaseOf(lead){
-  return PHASES.find(p => lead >= p.lo && lead <= p.hi) || PHASES[PHASES.length-1];
-}
+const phaseOf = lead => PHASES.find(p => lead >= p.lo && lead <= p.hi) || PHASES[PHASES.length-1];
 
 const STATUS = {
-  home: { label:"לוקחים מהבית", short:"מהבית", cls:"home" },
-  buy:  { label:"צריך לקנות",   short:"לקנות", cls:"buy"  },
-  done: { label:"נקנה",         short:"נקנה",  cls:"done" }
+  home: { label:"לוקחים מהבית", short:"מהבית", v:"home" },
+  buy:  { label:"צריך לקנות",   short:"לקנות", v:"buy"  },
+  done: { label:"נקנה",         short:"נקנה",  v:"done" }
 };
-
-/* ============================================================
-   CLOUD SYNC — paste your Firebase config below to turn it on.
-   Leave FIREBASE_CONFIG as null and the app runs purely locally
-   on this browser, exactly as before.
-   ============================================================ */
-const FIREBASE_CONFIG = null;
-/* Optional: the version shown in your Firebase console snippet,
-   e.g. "12.1.0". Leave empty and the loader probes known versions. */
-const FIREBASE_SDK_VERSION = "";
-const SDK_CANDIDATES = ["12.4.0","12.1.0","12.0.0","11.10.0","11.6.1","11.0.2","10.14.1"];
-
-const hasCloudConfig = () =>
-  !!(FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
-
-/* ============================================================
-   STATE
-   ============================================================ */
-const KEY = "newhome.plan.v1";
-let state, uiRoom = null, uiTab = "map";
-
-function defaultMoveIn(){
-  const d = new Date(); d.setMonth(d.getMonth()+9);
-  return d.toISOString().slice(0,10);
-}
-function seedState(){
-  let n = 0;
-  const items = [];
-  for (const r of ROOMS){
-    for (const [name, est, lead, st] of (SEED[r.id]||[])){
-      items.push({ id:"i"+(++n), room:r.id, name, est, actual:null, status:st, lead, store:"" });
-    }
-  }
-  const roomBudgets = {};
-  for (const r of ROOMS){
-    const sum = items.filter(i=>i.room===r.id).reduce((a,i)=>a+i.est,0);
-    roomBudgets[r.id] = Math.round(sum/500)*500;
-  }
-  return { v:1, moveIn: defaultMoveIn(), budget: 150000, roomBudgets, items, seq:n };
-}
-function load(){
-  try{
-    const raw = localStorage.getItem(KEY);
-    if (raw){
-      const s = JSON.parse(raw);
-      if (s && Array.isArray(s.items) && s.items.length) return s;
-    }
-  }catch(e){}
-  return seedState();
-}
-let saveTimer = null;
-function save(){
-  if (Cloud.on) return;                 // in cloud mode Firestore owns the data
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(()=>{
-    try{
-      localStorage.setItem(KEY, JSON.stringify(state));
-      const t = new Date();
-      $("#savedAt").textContent = "נשמר " + t.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
-    }catch(e){
-      $("#savedAt").textContent = "השמירה נכשלה — ייצא גיבוי";
-    }
-  }, 250);
-}
-
-/* ============================================================
-   CLOUD — Firestore, one document per item so that two people
-   editing different items never overwrite each other.
-   ============================================================ */
-const Cloud = {
-  on:false, F:null, db:null, homeId:null, homeRef:null, itemsRef:null,
-  status:"local", seeded:false, firstSnap:false,
-
-  async init(){
-    setStatus("connecting");
-    try{
-      const { A, AU, F } = await this.loadSdk();
-      this.F = F;
-      const app  = A.initializeApp(FIREBASE_CONFIG);
-      const auth = AU.getAuth(app);
-      await AU.signInAnonymously(auth);
-
-      this.db = F.initializeFirestore(app, {
-        localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() })
-      });
-
-      this.homeId   = this.resolveHomeId();
-      this.homeRef  = F.doc(this.db, "homes", this.homeId);
-      this.itemsRef = F.collection(this.db, "homes", this.homeId, "items");
-      this.on = true;
-
-      const existing = await F.getDoc(this.homeRef);
-      if (!existing.exists()) await this.seed();
-
-      this.listen();
-    }catch(err){
-      this.on = false;
-      setStatus("error", err && err.message);
-    }
-  },
-
-  async loadSdk(){
-    const versions = FIREBASE_SDK_VERSION
-      ? [FIREBASE_SDK_VERSION, ...SDK_CANDIDATES]
-      : SDK_CANDIDATES;
-    let last;
-    for (const v of versions){
-      try{
-        const base = "https://www.gstatic.com/firebasejs/" + v;
-        const [A, AU, F] = await Promise.all([
-          import(base + "/firebase-app.js"),
-          import(base + "/firebase-auth.js"),
-          import(base + "/firebase-firestore.js")
-        ]);
-        return { A, AU, F };
-      }catch(e){ last = e; }
-    }
-    throw new Error("לא הצלחתי לטעון את ה־SDK של Firebase. עדכן את FIREBASE_SDK_VERSION.");
-  },
-
-  /* The home id lives in the URL. The link is the credential. */
-  resolveHomeId(){
-    const m = location.hash.match(/[#&]h=([A-Za-z0-9]{20,})/);
-    if (m) return m[1];
-    const bytes = new Uint8Array(18);
-    crypto.getRandomValues(bytes);
-    const id = Array.from(bytes, b=>b.toString(36).padStart(2,"0")).join("").slice(0,24);
-    history.replaceState(null, "", location.pathname + location.search + "#h=" + id);
-    return id;
-  },
-
-  async seed(){
-    const F = this.F, fresh = seedState();
-    await F.setDoc(this.homeRef, {
-      moveIn: fresh.moveIn, budget: fresh.budget,
-      roomBudgets: fresh.roomBudgets, seq: fresh.seq,
-      createdAt: F.serverTimestamp(), updatedAt: F.serverTimestamp()
-    });
-    /* Seed ids are deterministic, so two devices opening the same fresh
-       link converge on the same documents instead of duplicating. */
-    for (let i=0; i<fresh.items.length; i+=400){
-      const batch = F.writeBatch(this.db);
-      for (const it of fresh.items.slice(i, i+400)) batch.set(F.doc(this.itemsRef, it.id), it);
-      await batch.commit();
-    }
-    this.seeded = true;
-  },
-
-  listen(){
-    const F = this.F, opts = { includeMetadataChanges:true };
-
-    F.onSnapshot(this.homeRef, opts, s=>{
-      const d = s.data();
-      if (d){
-        if (typeof d.moveIn === "string") state.moveIn = d.moveIn;
-        if (Number.isFinite(+d.budget))   state.budget = +d.budget;
-        if (d.roomBudgets) state.roomBudgets = Object.assign({}, state.roomBudgets, d.roomBudgets);
-        if (+d.seq > (state.seq||0)) state.seq = +d.seq;
-      }
-      this.flag(s.metadata);
-      renderAll();
-    }, e=> setStatus("error", e.message));
-
-    F.onSnapshot(this.itemsRef, opts, s=>{
-      const items = [];
-      s.forEach(doc=>{
-        const d = doc.data();
-        if (d && ROOM_BY_ID[d.room]) items.push({
-          id: doc.id, room: d.room, name: String(d.name||"פריט"),
-          est: Math.max(0, +d.est||0),
-          actual: d.actual==null ? null : Math.max(0, +d.actual||0),
-          status: STATUS[d.status] ? d.status : "buy",
-          lead: Math.min(52, Math.max(0, +d.lead||2)),
-          store: String(d.store||"")
-        });
-      });
-      const order = Object.fromEntries(ROOMS.map((r,ix)=>[r.id,ix]));
-      items.sort((a,b)=> order[a.room]-order[b.room] || a.id.localeCompare(b.id, "en", {numeric:true}));
-      state.items = items;
-      this.firstSnap = true;
-      this.flag(s.metadata);
-      renderAll();
-    }, e=> setStatus("error", e.message));
-  },
-
-  flag(meta){
-    setStatus(meta.hasPendingWrites ? "saving" : (meta.fromCache ? "offline" : "synced"));
-  },
-
-  /* Firestore writes reject asynchronously (a rules denial, say), so every
-     write goes through here rather than relying on a surrounding try/catch. */
-  guard(p){
-    return Promise.resolve(p).catch(e=>{
-      setStatus("error", e && e.message);
-      toast("השינוי לא נשמר בענן: " + (e && e.code ? e.code : "שגיאה"));
-    });
-  },
-
-  apply(ch){
-    if (!this.on || !ch) return;
-    const F = this.F;
-    try{
-      if (ch.item) this.putItem(ch.item);
-      else if (ch.add) this.putItem(ch.add);
-      else if (ch.del) this.guard(F.deleteDoc(F.doc(this.itemsRef, ch.del)));
-      else if (ch.home) this.guard(F.setDoc(this.homeRef, Object.assign({}, ch.home, { updatedAt: F.serverTimestamp() }), { merge:true }));
-      else if (ch.bulk) this.guard(this.replaceAll());
-    }catch(e){ setStatus("error", e.message); }
-  },
-
-  putItem(it){
-    const F = this.F;
-    this.guard(F.setDoc(F.doc(this.itemsRef, it.id), {
-      room:it.room, name:it.name, est:it.est, actual:it.actual,
-      status:it.status, lead:it.lead, store:it.store, updatedAt:F.serverTimestamp()
-    }, { merge:true }));
-  },
-
-  async replaceAll(){
-    const F = this.F;
-    const snap = await F.getDocs(this.itemsRef);
-    const keep = new Set(state.items.map(i=>i.id));
-    let batch = F.writeBatch(this.db), n = 0;
-    const flush = async ()=>{ if (n){ await batch.commit(); batch = F.writeBatch(this.db); n = 0; } };
-    snap.forEach(d=>{ if (!keep.has(d.id)){ batch.delete(d.ref); n++; } });
-    await flush();
-    for (const it of state.items){
-      batch.set(F.doc(this.itemsRef, it.id), {
-        room:it.room, name:it.name, est:it.est, actual:it.actual,
-        status:it.status, lead:it.lead, store:it.store
-      });
-      if (++n >= 400) await flush();
-    }
-    await flush();
-    F.setDoc(this.homeRef, {
-      moveIn: state.moveIn, budget: state.budget,
-      roomBudgets: state.roomBudgets, seq: state.seq, updatedAt: F.serverTimestamp()
-    }, { merge:true });
-  },
-
-  shareLink(){ return location.origin + location.pathname + "#h=" + this.homeId; }
-};
-
-const STATUS_TEXT = {
-  local:      ["מקומי בלבד",  "הנתונים נשמרים רק בדפדפן הזה"],
-  connecting: ["מתחבר…",      "מתחבר לסנכרון"],
-  synced:     ["מסונכרן",     "כל השינויים מעודכנים אצל שניכם"],
-  saving:     ["שומר…",       "השינוי בדרך לענן"],
-  offline:    ["לא מקוון",    "השינויים נשמרים ויסתנכרנו כשתחזור הקליטה"],
-  error:      ["הסנכרון נכשל","ממשיך לעבוד מקומית"]
-};
-function setStatus(s, detail){
-  Cloud.status = s;
-  const el = $("#syncChip");
-  if (!el) return;
-  const [label, note] = STATUS_TEXT[s] || STATUS_TEXT.local;
-  el.dataset.s = s;
-  el.querySelector(".lbl").textContent = label;
-  el.title = detail ? note + " — " + detail : note;
-  $("#shareBtn").hidden = !Cloud.on;
-}
 
 /* ============================================================
    HELPERS
    ============================================================ */
 const $  = (s,c)=> (c||document).querySelector(s);
 const $$ = (s,c)=> Array.from((c||document).querySelectorAll(s));
-const nf  = new Intl.NumberFormat("he-IL",{ maximumFractionDigits:0 });
-const cf  = new Intl.NumberFormat("he-IL",{ style:"currency", currency:"ILS", maximumFractionDigits:0 });
+const nf = new Intl.NumberFormat("he-IL",{ maximumFractionDigits:0 });
+const cf = new Intl.NumberFormat("he-IL",{ style:"currency", currency:"ILS", maximumFractionDigits:0 });
 const money = v => cf.format(Math.round(v||0));
 const esc = s => String(s??"").replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
 const DAY = 86400000;
+const today = ()=>{ const d=new Date(); d.setHours(0,0,0,0); return d; };
+const fmtDate = d => d ? d.toLocaleDateString("he-IL",{ day:"2-digit", month:"2-digit", year:"2-digit" }) : "—";
 
-function today(){ const d=new Date(); d.setHours(0,0,0,0); return d; }
-function moveInDate(){ const d = new Date(state.moveIn+"T00:00:00"); return isNaN(d) ? null : d; }
-function orderBy(item){
-  const m = moveInDate(); if (!m) return null;
-  return new Date(m.getTime() - (item.lead||2)*7*DAY);
+/* ============================================================
+   STATE — one phone, localStorage, nothing else
+   ============================================================ */
+const KEY = "newhome.plan.v2";
+let state, uiRoom = null, uiView = "map", roomFilter = "all";
+
+function defaultMoveIn(){ const d=new Date(); d.setMonth(d.getMonth()+9); return d.toISOString().slice(0,10); }
+function seedState(){
+  let n=0; const items=[];
+  for (const r of ROOMS)
+    for (const [name, est, lead, st] of (SEED[r.id]||[]))
+      items.push({ id:"i"+(++n), room:r.id, name, est, actual:null, status:st, lead, store:"" });
+  const roomBudgets = {};
+  for (const r of ROOMS)
+    roomBudgets[r.id] = Math.round(items.filter(i=>i.room===r.id).reduce((a,i)=>a+i.est,0)/500)*500;
+  return { v:2, moveIn: defaultMoveIn(), budget:150000, roomBudgets, items, seq:n };
 }
-function daysTo(d){ return d ? Math.round((d - today())/DAY) : null; }
-function fmtDate(d){ return d ? d.toLocaleDateString("he-IL",{ day:"2-digit", month:"2-digit", year:"2-digit" }) : "—"; }
-
-/** projected spend of an item: actual if bought, estimate if still to buy, 0 if from home */
-function projected(i){
-  if (i.status === "home") return 0;
-  if (i.status === "done") return (i.actual != null ? i.actual : i.est);
-  return i.est;
+function load(){
+  try{
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && Array.isArray(s.items) && s.items.length) return s;
+  }catch(e){}
+  return seedState();
 }
-function paid(i){ return i.status === "done" ? (i.actual != null ? i.actual : i.est) : 0; }
+function normalize(s){
+  const out = seedState();
+  out.moveIn = typeof s.moveIn === "string" ? s.moveIn : out.moveIn;
+  out.budget = Number.isFinite(+s.budget) ? +s.budget : out.budget;
+  out.roomBudgets = Object.assign({}, out.roomBudgets, s.roomBudgets||{});
+  out.seq = +s.seq || 0;
+  out.items = (s.items||[]).filter(i=> i && ROOM_BY_ID[i.room]).map((i,ix)=>({
+    id: i.id || ("i"+ix+"_"+Date.now().toString(36)),
+    room: i.room, name: String(i.name||"פריט"),
+    est: Math.max(0, +i.est||0),
+    actual: i.actual==null ? null : Math.max(0, +i.actual||0),
+    status: STATUS[i.status] ? i.status : "buy",
+    lead: Math.min(52, Math.max(0, +i.lead||2)),
+    store: String(i.store||"")
+  }));
+  return out;
+}
+let saveTimer;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }, 200);
+}
+function commit(){ save(); renderAll(); }
 
+/* ---- derived ---- */
+const moveInDate = ()=>{ const d = new Date(state.moveIn+"T00:00:00"); return isNaN(d) ? null : d; };
+function orderBy(i){ const m = moveInDate(); return m ? new Date(m.getTime() - (i.lead||2)*7*DAY) : null; }
+const daysTo = d => d ? Math.round((d - today())/DAY) : null;
+const roomItems = id => state.items.filter(i=>i.room===id);
 function totals(items){
-  let paidSum=0, planned=0, saved=0, nHome=0, nBuy=0, nDone=0;
+  let paid=0, planned=0, saved=0, nHome=0, nBuy=0, nDone=0;
   for (const i of items){
     if (i.status==="home"){ saved += i.est; nHome++; }
-    else if (i.status==="done"){ paidSum += (i.actual!=null?i.actual:i.est); nDone++; }
+    else if (i.status==="done"){ paid += (i.actual!=null?i.actual:i.est); nDone++; }
     else { planned += i.est; nBuy++; }
   }
-  return { paid:paidSum, planned, saved, projected: paidSum+planned, nHome, nBuy, nDone, n: items.length };
+  return { paid, planned, saved, projected:paid+planned, nHome, nBuy, nDone, n:items.length };
 }
-function roomItems(id){ return state.items.filter(i=>i.room===id); }
 function readiness(id){
   const its = roomItems(id);
-  if (!its.length) return 0;
-  const settled = its.filter(i=>i.status!=="buy").length;
-  return settled / its.length;
+  return its.length ? its.filter(i=>i.status!=="buy").length / its.length : 0;
 }
+const projected = i => i.status==="home" ? 0 : (i.status==="done" ? (i.actual!=null?i.actual:i.est) : i.est);
 
 function toast(msg){
   const t = $("#toast"); t.textContent = msg; t.classList.add("on");
-  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove("on"), 2200);
-}
-async function copyText(text){
-  try{ await navigator.clipboard.writeText(text); return true; }
-  catch(e){
-    const ta = document.createElement("textarea");
-    ta.value = text; ta.style.position="fixed"; ta.style.opacity="0";
-    document.body.appendChild(ta); ta.select();
-    let ok=false; try{ ok = document.execCommand("copy"); }catch(_){}
-    ta.remove(); return ok;
-  }
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove("on"), 2100);
 }
 
 /* ============================================================
-   HEADER + KPIs
+   HEADER + TILES
    ============================================================ */
+const VIEW_TITLE = {
+  map:   ["הבית החדש", ()=> ROOMS.filter(r=>!r.noMap).length + " חדרים"],
+  rooms: ["חדרים",     ()=> nf.format(state.items.length) + " פריטים"],
+  time:  ["ציר זמן",   ()=> nf.format(state.items.filter(i=>i.status==="buy").length) + " להזמנה"],
+  money: ["כספים",     ()=> "תקציב " + money(state.budget)]
+};
 function renderHeader(){
-  $("#moveIn").value = state.moveIn;
-  $("#budget").value = state.budget;
-
   const m = moveInDate(), d = daysTo(m);
-  $("#countdown").innerHTML = d==null ? "—"
-    : (d >= 0 ? `${nf.format(d)} <small>ימים</small>` : `<span style="color:var(--c-alert)">עברו ${nf.format(-d)} ימים</span>`);
-
-  const t = totals(state.items);
-  const B = Math.max(state.budget, 1);
-  const over = Math.max(0, t.projected - state.budget);
-  const paidW   = Math.min(t.paid, state.budget) / B * 100;
-  const planW   = Math.min(Math.max(0, state.budget - t.paid), t.planned) / B * 100;
-  const overW   = over > 0 ? Math.min(over / B * 100, 100) : 0;
-
-  const track = $("#sbTrack");
-  $$(".sb-seg", track).forEach(el=>el.remove());
-  const mk = (cls,w,label)=>{
-    if (w<=0) return;
-    const el = document.createElement("div");
-    el.className = "sb-seg "+cls; el.style.width = w+"%"; el.title = label;
-    track.appendChild(el);
-  };
-  mk("paid", paidW, "שולם");
-  mk("plan", planW, "מתוכנן");
-  mk("over", overW, "חריגה");
-
-  const left = state.budget - t.projected;
-  $("#sbLegend").innerHTML = `
-    <span><i class="swatch" style="background:var(--c-done)"></i> שולם <b>${money(t.paid)}</b></span>
-    <span><i class="swatch" style="background:var(--c-buy);opacity:.55"></i> עוד מתוכנן <b>${money(t.planned)}</b></span>
-    <span class="push">${ left >= 0
-        ? `נשאר בתקציב <b style="color:var(--c-done)">${money(left)}</b>`
-        : `<b style="color:var(--c-alert)">חריגה של ${money(-left)}</b>` }
-      מתוך <b>${money(state.budget)}</b></span>`;
-
-  $("#badgeItems").textContent = nf.format(state.items.length);
-  $("#badgeTl").textContent = nf.format(state.items.filter(i=>i.status==="buy").length);
-
-  renderKpis(t);
+  $("#hdDate").textContent = m
+    ? "כניסה " + m.toLocaleDateString("he-IL",{ day:"numeric", month:"long", year:"numeric" })
+      + (d!=null ? (d>=0 ? " · בעוד " + nf.format(d) + " ימים" : " · עברו " + nf.format(-d) + " ימים") : "")
+    : "לא נקבע תאריך כניסה";
+  const [t, sub] = VIEW_TITLE[uiView];
+  $("#hdTitle").textContent = t;
+  $("#hdSub").textContent = sub();
 }
 
-function renderKpis(t){
-  const left = state.budget - t.projected;
-  const overdue = state.items.filter(i=>{
-    if (i.status!=="buy") return false;
-    const d = daysTo(orderBy(i)); return d!=null && d < 0;
-  }).length;
+function tileHTML(cls, val, label, note, icon){
+  return `<div class="tile ${cls}">
+    <span class="blob a"></span><span class="blob b"></span>
+    <span class="ic">${icon}</span>
+    <div><div class="tv n">${val}</div><div class="tl">${esc(label)}</div></div>
+    <div class="tn">${esc(note)}</div>
+  </div>`;
+}
+const IC = {
+  buy:  '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6h15l-1.5 9h-12z"/><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M6 6L5 3H2"/></svg>',
+  done: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  home: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>',
+  wallet: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M16 12.5h3"/></svg>',
+  clock: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'
+};
 
-  const cards = [
-    { l:"צפי הוצאה כולל", v: money(t.projected), n: `${nf.format(t.nBuy)} פריטים לקנייה · ${nf.format(t.nDone)} נקנו`, c: t.projected > state.budget ? "bad" : "" },
-    { l: left>=0 ? "נשאר בתקציב" : "חריגה מהתקציב", v: money(Math.abs(left)), n: `מתוך ${money(state.budget)}`, c: left>=0 ? "good":"bad" },
-    { l:"נחסך מהבית הישן", v: money(t.saved), n:`${nf.format(t.nHome)} פריטים עוברים איתכם`, c:"good" },
-    { l:"באיחור להזמנה", v: nf.format(overdue), n: overdue ? "פריטים שמועד ההזמנה שלהם חלף" : "הכול בזמן", c: overdue ? "warn" : "good" }
-  ];
-  $("#kpis").innerHTML = cards.map(c=>`
-    <div class="kpi">
-      <div class="k-label">${esc(c.l)}</div>
-      <div class="k-val ${c.c}">${c.v}</div>
-      <div class="k-note">${esc(c.n)}</div>
-    </div>`).join("");
+function renderTiles(){
+  const t = totals(state.items);
+  const overdue = state.items.filter(i=> i.status==="buy" && (daysTo(orderBy(i))??1) < 0).length;
+  $("#tiles").innerHTML =
+    tileHTML("buy",  nf.format(t.nBuy),  "צריך לקנות", money(t.planned) + " בהערכה", IC.buy) +
+    tileHTML("done", nf.format(t.nDone), "כבר נקנה",   money(t.paid) + " שולם", IC.done) +
+    tileHTML("home", nf.format(t.nHome), "מהבית הישן", money(t.saved) + " נחסך", IC.home) +
+    (overdue
+      ? tileHTML("alert", nf.format(overdue), "באיחור", "מועד ההזמנה חלף", IC.clock)
+      : tileHTML("home", money(Math.max(0, state.budget - t.projected)).replace(/\s?₪/,""), "נשאר בתקציב", "מתוך " + money(state.budget), IC.wallet));
+
+  const left = state.budget - t.projected;
+  $("#moneyTiles").innerHTML =
+    tileHTML("buy",  money(t.projected).replace(/\s?₪/,""), "צפי הוצאה כולל", nf.format(t.nBuy) + " פריטים לקנייה", IC.wallet) +
+    tileHTML(left>=0 ? "done" : "alert", money(Math.abs(left)).replace(/\s?₪/,""),
+      left>=0 ? "נשאר בתקציב" : "חריגה", "מתוך " + money(state.budget), IC.done);
 }
 
 /* ============================================================
-   MAP
+   FLOOR PLAN
    ============================================================ */
-function renderMap(){
-  const g = $("#planRooms");
-  g.innerHTML = ROOMS.filter(r=>!r.noMap).map(r=>{
-    const ratio = readiness(r.id);
-    const op = (0.05 + 0.36*ratio).toFixed(3);
-    const t = totals(roomItems(r.id));
+function renderPlan(){
+  $("#plan").innerHTML = ROOMS.filter(r=>!r.noMap).map(r=>{
+    const ratio = readiness(r.id), t = totals(roomItems(r.id));
+    const op = (0.06 + 0.42*ratio).toFixed(3);
     const shape = r.path
-      ? `<path class="rbase" d="${r.path}"/><path class="rfill" d="${r.path}" fill-opacity="${op}"/><path class="rwall" d="${r.path}"/>`
-      : `<rect class="rbase" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="2"/>
-         <rect class="rfill" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="2" fill-opacity="${op}"/>
-         <rect class="rwall" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="2"/>`;
-    const cx = r.path ? r.lx : r.x + r.w/2;
-    const cy = r.path ? r.ly : r.y + r.h/2;
-    const nameSize = r.small ? 13 : 17;
+      ? `<path class="rb" d="${r.path}"/><path class="rf" d="${r.path}" fill-opacity="${op}"/><path class="rs" d="${r.path}"/>`
+      : `<rect class="rb" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="12"/>
+         <rect class="rf" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="12" fill-opacity="${op}"/>
+         <rect class="rs" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="12"/>`;
+    const cx = r.path ? r.lx : r.x + r.w/2, cy = r.path ? r.ly : r.y + r.h/2;
     const label = r.small
-      ? `<text class="rname" x="${cx}" y="${cy+2}" style="font-size:${nameSize}px">${esc(r.name)}</text>
-         <text class="rmeta" x="${cx}" y="${cy+18}" style="font-size:11px">${t.nBuy}/${t.n}</text>`
-      : `<text class="rname" x="${cx}" y="${cy-6}">${esc(r.name)}</text>
-         <text class="rmeta" x="${cx}" y="${cy+16}">${r.area? r.area.toFixed(2).replace(/\.00$/,"")+" מ״ר · " : ""}${t.nBuy} לקנות</text>`;
-    return `<g class="room ${r.inset?"inset":""}" data-room="${r.id}" tabindex="0" role="button"
-              aria-label="${esc(r.name)}, ${t.nBuy} פריטים לקנייה מתוך ${t.n}">${shape}${label}</g>`;
+      ? `<text class="rn" x="${cx}" y="${cy+2}" style="font-size:12px">${esc(r.name)}</text>
+         <text class="rm" x="${cx}" y="${cy+17}" style="font-size:11px">${t.nBuy}/${t.n}</text>`
+      : `<text class="rn" x="${cx}" y="${cy-5}">${esc(r.name)}</text>
+         <text class="rm" x="${cx}" y="${cy+15}">${r.area? r.area.toFixed(2).replace(/\.00$/,"")+" מ״ר · ":""}${t.nBuy} לקנות</text>`;
+    return `<g class="room ${r.inset?"inset":""} ${r.id===uiRoom?"sel":""}" data-room="${r.id}" tabindex="0" role="button"
+             aria-label="${esc(r.name)}, ${t.nBuy} פריטים לקנייה מתוך ${t.n}">${shape}${label}</g>`;
   }).join("");
 
-  $("#planDims").innerHTML = `
-    <line class="dimline" x1="315" y1="-34" x2="680" y2="-34"/>
-    <line class="dimline" x1="315" y1="-42" x2="315" y2="-26"/>
-    <line class="dimline" x1="680" y1="-42" x2="680" y2="-26"/>
-    <text class="dimtext" x="497" y="-46">מרפסת 21 מ״ר</text>
-    <line class="dimline" x1="-14" y1="330" x2="-14" y2="1130"/>
-    <line class="dimline" x1="-22" y1="330" x2="-6" y2="330"/>
-    <line class="dimline" x1="-22" y1="1130" x2="-6" y2="1130"/>
-    <text class="dimtext" x="-14" y="730" transform="rotate(-90,-14,730)">אגף מגורים</text>
-    <g class="northarrow" transform="translate(716,-40)">
-      <path d="M0,-18 L7,10 L0,4 L-7,10 Z"/>
-      <text x="0" y="26" text-anchor="middle" style="font-size:12px;font-family:var(--mono);fill:var(--muted)">צפון</text>
-    </g>`;
-
-  const grand = totals(state.items);
-  $("#rlTot").textContent = money(grand.projected);
-  $("#roomList").innerHTML = ROOMS.map(r=>{
-    const t = totals(roomItems(r.id));
-    const pct = Math.round(readiness(r.id)*100);
-    return `<button class="rl-row" data-room="${r.id}" title="${esc(r.name)} · ${pct}% מהפריטים סגורים">
-      <span class="rl-name">${esc(r.name)}</span>
-      <span class="rl-bar"><i style="width:${pct}%"></i></span>
-      <span class="rl-n ${t.projected? "":"zero"}">${t.projected ? money(t.projected) : "—"}</span>
-    </button>`;
-  }).join("");
-  $$("#roomList .rl-row").forEach(b=> b.addEventListener("click", ()=> openRoom(b.dataset.room)));
-
-  $$(".room").forEach(el=>{
+  $$("#plan .room").forEach(el=>{
     const id = el.dataset.room;
     el.addEventListener("click", ()=> openRoom(id));
     el.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); openRoom(id); }});
-    el.addEventListener("mousemove", e=> showTip(e, id));
+    el.addEventListener("mousemove", e=> showTip(e.clientX, e.clientY, id));
     el.addEventListener("mouseleave", hideTip);
-    el.addEventListener("focus", ()=> showTipAt(el, id));
+    el.addEventListener("focus", ()=>{ const b=el.getBoundingClientRect(); showTip(b.left+b.width/2, b.top+b.height/2, id); });
     el.addEventListener("blur", hideTip);
-    if (id === uiRoom) el.classList.add("sel");
   });
 }
-
-const tip = ()=> $("#mapTip");
-function tipHTML(id){
-  const r = ROOM_BY_ID[id], t = totals(roomItems(id));
-  const b = state.roomBudgets[id] || 0;
-  return `<h4>${esc(r.name)}</h4>
-    <div class="row"><span>פריטים לקנייה</span><b>${t.nBuy} / ${t.n}</b></div>
-    <div class="row"><span>צפי הוצאה</span><b>${money(t.projected)}</b></div>
-    <div class="row"><span>תקציב חדר</span><b>${money(b)}</b></div>
-    ${t.saved ? `<div class="row"><span>נחסך מהבית</span><b>${money(t.saved)}</b></div>` : ""}`;
-}
-function placeTip(px, py){
-  const st = $("#mapStage").getBoundingClientRect(), el = tip();
+function showTip(px, py, id){
+  const r = ROOM_BY_ID[id], t = totals(roomItems(id)), el = $("#planTip");
+  el.innerHTML = `<h5>${esc(r.name)}</h5>
+    <div class="r"><span>לקנות</span><b>${t.nBuy} / ${t.n}</b></div>
+    <div class="r"><span>צפי</span><b>${money(t.projected)}</b></div>`;
   el.classList.add("on");
-  const w = el.offsetWidth, h = el.offsetHeight;
-  let x = px - st.left + 14, y = py - st.top + 14;
-  if (x + w > st.width - 8)  x = px - st.left - w - 14;
-  if (y + h > st.height - 8) y = Math.max(8, py - st.top - h - 14);
-  el.style.left = Math.max(8,x)+"px"; el.style.top = Math.max(8,y)+"px";
+  const st = $(".planwrap").getBoundingClientRect();
+  let x = px - st.left + 12, y = py - st.top + 12;
+  if (x + el.offsetWidth > st.width - 6) x = px - st.left - el.offsetWidth - 12;
+  if (y + el.offsetHeight > st.height - 6) y = Math.max(6, py - st.top - el.offsetHeight - 12);
+  el.style.left = Math.max(6,x)+"px"; el.style.top = Math.max(6,y)+"px";
 }
-function showTip(e, id){ tip().innerHTML = tipHTML(id); placeTip(e.clientX, e.clientY); }
-function showTipAt(el, id){ const b = el.getBoundingClientRect(); tip().innerHTML = tipHTML(id); placeTip(b.left+b.width/2, b.top+b.height/2); }
-function hideTip(){ tip().classList.remove("on"); }
+const hideTip = ()=> $("#planTip").classList.remove("on");
 
 /* ============================================================
-   DRAWER
+   ROOM CARDS
    ============================================================ */
-function openRoom(id){
-  uiRoom = id;
-  $$(".room").forEach(el=> el.classList.toggle("sel", el.dataset.room===id));
-  renderDrawer();
-  $("#drawer").classList.add("on");
-  $("#scrim").classList.add("on");
-  hideTip();
-  setTimeout(()=> $("#drClose").focus(), 60);
+function ringHTML(pct, size){
+  const R = 28, C = 2*Math.PI*R;
+  /* a round cap on a zero-length arc paints a stray dot, so drop the arc at 0 */
+  const arc = pct > 0.5
+    ? `<circle class="fgc" cx="33" cy="33" r="${R}" stroke-dasharray="${(C*pct/100).toFixed(1)} ${C.toFixed(1)}"/>`
+    : "";
+  return `<div class="ring" style="width:${size}px;height:${size}px">
+    <svg viewBox="0 0 66 66"><circle class="bgc" cx="33" cy="33" r="${R}"/>${arc}</svg>
+    <span class="lab">${Math.round(pct)}%</span></div>`;
 }
-function closeDrawer(){
-  $("#drawer").classList.remove("on");
-  $("#scrim").classList.remove("on");
-  $$(".room").forEach(el=> el.classList.remove("sel"));
-  uiRoom = null;
-}
-
-function renderDrawer(){
-  if (!uiRoom) return;
-  const r = ROOM_BY_ID[uiRoom];
-  const its = roomItems(uiRoom);
-  const t = totals(its);
-  const b = state.roomBudgets[uiRoom] || 0;
-
-  $("#drEyebrow").textContent = r.area ? `חדר · ${r.area.toFixed(2).replace(/\.00$/,"")} מ״ר` : "קטגוריה";
-  $("#drTitle").textContent = r.name;
-  $("#drDims").textContent = r.dims || "";
-
-  $("#drStats").innerHTML = `
-    <div><div class="l">צפי הוצאה</div><div class="v">${money(t.projected)}</div></div>
-    <div><div class="l">שולם</div><div class="v" style="color:var(--c-done)">${money(t.paid)}</div></div>
-    <div><div class="l">נחסך מהבית</div><div class="v" style="color:var(--c-home)">${money(t.saved)}</div></div>`;
-
-  $("#drBudget").value = b;
-  const diff = b - t.projected;
-  $("#drBudgetNote").innerHTML = diff >= 0
-    ? `<span style="color:var(--c-done)">נשאר ${money(diff)}</span>`
-    : `<span style="color:var(--c-alert)">חריגה ${money(-diff)}</span>`;
-  const B = Math.max(b,1);
-  $("#drMini").innerHTML =
-    `<i style="width:${Math.min(100, t.paid/B*100)}%;background:var(--c-done)"></i>` +
-    `<i style="width:${Math.min(100-Math.min(100,t.paid/B*100), t.planned/B*100)}%;background:var(--c-buy);opacity:.55"></i>`;
-
-  $("#drBody").innerHTML = its.length ? its.map(itemHTML).join("")
-    : `<p style="padding:26px 16px;color:var(--muted);font-size:13.5px">אין עדיין פריטים בחדר הזה. הוסף את הראשון מלמטה.</p>`;
-  wireItems();
-}
-
-function itemHTML(i){
-  const ob = orderBy(i), d = daysTo(ob);
-  const late = i.status==="buy" && d!=null && d < 0;
-  const soon = i.status==="buy" && d!=null && d >= 0 && d <= 30;
-  const delta = (i.status==="done" && i.actual!=null) ? i.actual - i.est : null;
-  return `
-  <div class="item is-${i.status}" data-id="${i.id}">
-    <div class="item-top">
-      <input class="item-name" value="${esc(i.name)}" data-f="name" aria-label="שם הפריט">
-      <div class="seg" role="group" aria-label="סטטוס">
-        ${Object.keys(STATUS).map(s=>`<button data-s="${s}" aria-pressed="${i.status===s}">${STATUS[s].short}</button>`).join("")}
+function renderRoomCards(){
+  const rows = ROOMS.filter(r=>{
+    if (roomFilter==="all") return true;
+    const done = readiness(r.id) === 1 && roomItems(r.id).length > 0;
+    return roomFilter==="done" ? done : !done;
+  });
+  $("#roomCards").innerHTML = rows.length ? rows.map(r=>{
+    const t = totals(roomItems(r.id)), pct = readiness(r.id)*100;
+    const b = state.roomBudgets[r.id] || 0, over = t.projected > b && b > 0;
+    return `<button class="rcard" data-room="${r.id}">
+      <div class="t">
+        <h4>${esc(r.name)}</h4>
+        <div class="meta">${r.area ? r.area.toFixed(2).replace(/\.00$/,"") + " מ״ר · " : ""}${esc(r.dims||"")}</div>
+        <div class="foot">
+          <span class="chipn"><i style="background:var(--d-buy)"></i>${t.nBuy} לקנות</span>
+          <span class="chipn"><i style="background:var(--d-done)"></i>${t.nDone} נקנו</span>
+          <span class="chipn"><i style="background:var(--d-home)"></i>${t.nHome} מהבית</span>
+          <span class="chipn" style="${over?"color:var(--d-alert);font-weight:700":""}">${money(t.projected)}${ b? " / " + money(b) : "" }</span>
+        </div>
       </div>
-      <button class="item-del" title="מחיקה" aria-label="מחיקת ${esc(i.name)}">×</button>
-    </div>
-    <div class="item-fields">
-      <span class="f">הערכה <input class="money" type="number" min="0" step="50" value="${i.est}" data-f="est" aria-label="מחיר משוער"></span>
-      ${ i.status==="done"
-          ? `<span class="f">בפועל <input class="money" type="number" min="0" step="50" value="${i.actual!=null?i.actual:""}" placeholder="—" data-f="actual" aria-label="מחיר בפועל"></span>`
-          : "" }
-      ${ delta!=null && delta!==0
-          ? `<span class="delta ${delta>0?"up":"down"}">${delta>0?"▲":"▼"} ${money(Math.abs(delta))}</span>` : "" }
-      ${ i.status!=="home"
-          ? `<span class="f">חנות <input class="store" type="text" value="${esc(i.store||"")}" placeholder="—" data-f="store" aria-label="חנות או ספק"></span>` : "" }
-      ${ i.status==="buy"
-          ? `<span class="f">אספקה <input class="lead" type="number" min="0" max="52" step="1" value="${i.lead}" data-f="lead" aria-label="שבועות אספקה"> שב׳</span>
-             <span class="pill ${late?"late":(soon?"buy":"")}" title="מועד ההזמנה האחרון">${ late ? "היה להזמין ב־" : "להזמין עד" } ${fmtDate(ob)}</span>`
-          : "" }
-    </div>
-  </div>`;
-}
-
-function wireItems(){
-  $$("#drBody .item").forEach(el=>{
-    const id = el.dataset.id;
-    const it = state.items.find(x=>x.id===id);
-    if (!it) return;
-
-    $$("input[data-f]", el).forEach(inp=>{
-      inp.addEventListener("change", ()=>{
-        const f = inp.dataset.f;
-        if (f==="name")        it.name = inp.value.trim() || "פריט";
-        else if (f==="store")  it.store = inp.value.trim();
-        else if (f==="actual") it.actual = inp.value === "" ? null : Math.max(0, +inp.value||0);
-        else if (f==="lead")   it.lead = Math.min(52, Math.max(0, +inp.value||0));
-        else                   it.est = Math.max(0, +inp.value||0);
-        commit({ item: it });
-      });
-    });
-
-    $$(".seg button", el).forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        it.status = btn.dataset.s;
-        if (it.status==="done" && it.actual==null) it.actual = it.est;
-        commit({ item: it });
-      });
-    });
-
-    $(".item-del", el).addEventListener("click", ()=>{
-      state.items = state.items.filter(x=>x.id!==id);
-      commit({ del: id });
-      toast("הפריט נמחק");
-    });
-  });
-}
-
-/* ============================================================
-   ITEMS TABLE
-   ============================================================ */
-function renderRoomFilter(){
-  const sel = $("#fRoom"), cur = sel.value;
-  sel.innerHTML = `<option value="">כל החדרים</option>` +
-    ROOMS.map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join("");
-  sel.value = cur;
-}
-function renderItems(){
-  const q = $("#q").value.trim().toLowerCase();
-  const fr = $("#fRoom").value, fs = $("#fStatus").value, sort = $("#fSort").value;
-
-  let rows = state.items.filter(i=>{
-    if (fr && i.room!==fr) return false;
-    if (fs && i.status!==fs) return false;
-    if (q){
-      const hay = (i.name + " " + ROOM_BY_ID[i.room].name + " " + (i.store||"")).toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-
-  const order = Object.fromEntries(ROOMS.map((r,ix)=>[r.id,ix]));
-  if (sort==="price")      rows.sort((a,b)=> projected(b)-projected(a) || b.est-a.est);
-  else if (sort==="order") rows.sort((a,b)=> (b.lead||0)-(a.lead||0));
-  else                     rows.sort((a,b)=> order[a.room]-order[b.room] || b.est-a.est);
-
-  $("#itemsBody").innerHTML = rows.length ? rows.map(i=>{
-    const ob = orderBy(i), d = daysTo(ob);
-    const late = i.status==="buy" && d!=null && d<0;
-    const delta = (i.status==="done" && i.actual!=null) ? i.actual - i.est : null;
-    return `<tr class="clickable" data-room="${i.room}">
-      <td>${esc(i.name)}</td>
-      <td style="color:var(--muted)">${esc(ROOM_BY_ID[i.room].name)}</td>
-      <td><span class="pill ${STATUS[i.status].cls}">${STATUS[i.status].label}</span></td>
-      <td class="n">${money(i.est)}</td>
-      <td class="n">${i.actual!=null ? money(i.actual) : "—"}</td>
-      <td class="n">${ delta==null||delta===0 ? "—" :
-          `<span class="delta ${delta>0?"up":"down"}">${delta>0?"+":"−"}${money(Math.abs(delta))}</span>`}</td>
-      <td class="n">${ i.status==="buy" ? `<span class="${late?"delta up":""}">${fmtDate(ob)}</span>` : "—" }</td>
-      <td style="color:var(--muted)">${esc(i.store||"—")}</td>
-    </tr>`;
-  }).join("") : `<tr><td colspan="8" style="color:var(--muted);padding:24px 14px">לא נמצאו פריטים תואמים.</td></tr>`;
-
-  const t = totals(rows);
-  $("#itemsFoot").innerHTML = `<tr>
-    <td>סה״כ ${nf.format(rows.length)} פריטים</td><td></td><td></td>
-    <td class="n">${money(rows.reduce((a,i)=>a+i.est,0))}</td>
-    <td class="n">${money(t.paid)}</td><td></td>
-    <td class="n">צפי ${money(t.projected)}</td><td></td>
-  </tr>`;
-
-  $$("#itemsBody tr.clickable").forEach(tr=>{
-    tr.addEventListener("click", ()=> openRoom(tr.dataset.room));
-  });
+      ${ringHTML(pct, 66)}
+    </button>`;
+  }).join("") : `<p class="empty">אין חדרים בקטגוריה הזו.</p>`;
+  $$("#roomCards .rcard").forEach(b=> b.addEventListener("click", ()=> openRoom(b.dataset.room)));
 }
 
 /* ============================================================
    TIMELINE
    ============================================================ */
-function renderTimeline(){
-  const pend = state.items.filter(i=>i.status==="buy");
-  const m = moveInDate();
-  if (!pend.length || !m){
-    $("#tlList").innerHTML = `<div class="tl-group"><div class="tl-head"><h3>אין פריטים שממתינים להזמנה</h3></div></div>`;
-    return;
-  }
-  const now = today();
-  const byPhase = new Map(PHASES.map(p=>[p.id, []]));
-  for (const i of pend) byPhase.get(phaseOf(i.lead||0).id).push(i);
+function renderPhases(){
+  const pend = state.items.filter(i=>i.status==="buy"), m = moveInDate();
+  if (!pend.length || !m){ $("#phases").innerHTML = `<p class="empty">אין פריטים שממתינים להזמנה.</p>`; return; }
+  const now = today(), by = new Map(PHASES.map(p=>[p.id,[]]));
+  for (const i of pend) by.get(phaseOf(i.lead||0).id).push(i);
 
-  $("#tlList").innerHTML = PHASES.map(p=>{
-    const items = byPhase.get(p.id);
-    if (!items.length) return "";
+  $("#phases").innerHTML = PHASES.map(p=>{
+    const items = by.get(p.id); if (!items.length) return "";
     const deadline = new Date(m.getTime() - p.lo*7*DAY);
-    const opens    = p.hi >= 999 ? null : new Date(m.getTime() - p.hi*7*DAY);
-    const sum = items.reduce((a,i)=>a+i.est,0);
-
-    let cls = "", tag = "";
-    if (deadline < now){ cls = "urgent"; tag = "חלון ההזמנה נסגר"; }
-    else if (!opens || opens <= now){ cls = "soon"; tag = "פתוח להזמנה עכשיו"; }
+    const opens = p.hi >= 999 ? null : new Date(m.getTime() - p.hi*7*DAY);
+    let cls="", tag="";
+    if (deadline < now){ cls="late"; tag="חלון ההזמנה נסגר"; }
+    else if (!opens || opens <= now){ cls="now"; tag="פתוח להזמנה עכשיו"; }
     else { tag = "נפתח בעוד " + nf.format(Math.round((opens-now)/DAY)) + " ימים"; }
-
-    const win = opens
-      ? `${fmtDate(opens)} – ${fmtDate(deadline)}`
-      : `עד ${fmtDate(deadline)}`;
-
     items.sort((a,b)=> b.est - a.est);
-    return `<div class="tl-group ${cls}">
-      <div class="tl-head">
-        <h3>${esc(p.name)}</h3>
-        <span class="when">${esc(tag)} · ${items.length} פריטים</span>
-        <span class="sum">${money(sum)}</span>
+    return `<div class="phase ${cls}">
+      <div class="phase-h">
+        <span class="phase-dot"></span>
+        <div style="flex:1;min-width:0">
+          <h4>${esc(p.name)}</h4>
+          <span class="tag">${esc(tag)} · ${items.length} פריטים</span>
+        </div>
+        <span class="sum">${money(items.reduce((a,i)=>a+i.est,0))}</span>
       </div>
-      <p class="tl-note">${esc(p.note)} <span class="tl-win">חלון ההזמנה: ${win}</span></p>
-      <div class="tl-items">
-        ${items.map(i=>`<button class="chip" data-room="${i.room}">
-            <span>${esc(i.name)}</span>
-            <b>${money(i.est)}</b>
-            <span class="rm">${esc(ROOM_BY_ID[i.room].name)}</span>
-          </button>`).join("")}
-      </div>
+      <p class="note">${esc(p.note)}</p>
+      <div class="win">חלון ההזמנה: ${ opens ? fmtDate(opens)+" – "+fmtDate(deadline) : "עד "+fmtDate(deadline) }</div>
+      <div class="chips">${items.map(i=>`<button class="chip" data-room="${i.room}">
+        <span>${esc(i.name)}</span><b>${money(i.est)}</b><span class="rm">${esc(ROOM_BY_ID[i.room].name)}</span></button>`).join("")}</div>
     </div>`;
   }).join("");
-
-  $$("#tlList .chip").forEach(c=> c.addEventListener("click", ()=> openRoom(c.dataset.room)));
+  $$("#phases .chip").forEach(c=> c.addEventListener("click", ()=> openRoom(c.dataset.room)));
 }
 
 /* ============================================================
-   MONEY
+   CHARTS
    ============================================================ */
-function renderMoney(){
-  const maxScale = Math.max(
-    ...ROOMS.map(r=> Math.max(totals(roomItems(r.id)).projected, state.roomBudgets[r.id]||0)), 1
-  ) * 1.04;
+function niceMax(v){
+  if (v <= 0) return 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(v)));
+  return Math.ceil(v/mag)*mag;
+}
+function renderPhaseChart(){
+  const rows = PHASES.map(p=>{
+    const its = state.items.filter(i=> i.status!=="home" && phaseOf(i.lead||0).id === p.id);
+    const t = totals(its);
+    return { short: p.name.split(/[ ,]/)[0], paid:t.paid, planned:t.planned };
+  });
+  /* RTL: the value gutter sits on the right and the phases run right to left,
+     so the eye enters the chart where it enters the page. */
+  const W=340, H=180, GUT=38, PADL=8, PT=10, PB=32;
+  const x0 = PADL, x1 = W-GUT, iw = x1-x0, ih = H-PT-PB;
+  const max = niceMax(Math.max(...rows.map(r=>Math.max(r.paid, r.planned)), 1));
+  const bw = iw/rows.length, barw = Math.min(13, bw/2 - 3);
+  const y = v => PT + ih - (v/max)*ih;
+
+  let g = "";
+  for (let k=0; k<=4; k++){
+    const v = max*k/4, yy = y(v);
+    g += `<line class="grid-l" x1="${x0}" y1="${yy}" x2="${x1}" y2="${yy}"/>
+          <text class="axis-t" x="${x1+5}" y="${yy+4}" text-anchor="start">${nf.format(v/1000)}k</text>`;
+  }
+  /* bars grow from the baseline, with a 2px surface gap inside each pair */
+  const bars = rows.map((r,ix)=>{
+    const cx = x1 - bw*(ix + 0.5);
+    const bA = `<rect class="bar-a" x="${cx + 1}" y="${y(r.paid)}" width="${barw}" height="${Math.max(0, PT+ih-y(r.paid))}" rx="3"><title>${esc(r.short)} · שולם ${money(r.paid)}</title></rect>`;
+    const bB = `<rect class="bar-b" x="${cx - barw - 1}" y="${y(r.planned)}" width="${barw}" height="${Math.max(0, PT+ih-y(r.planned))}" rx="3"><title>${esc(r.short)} · מתוכנן ${money(r.planned)}</title></rect>`;
+    return bA + bB + `<text class="axis-t" x="${cx}" y="${H-PB+16}" text-anchor="middle" style="direction:rtl">${esc(r.short)}</text>`;
+  }).join("");
+  $("#phaseChart").innerHTML = g + bars +
+    `<line class="grid-l" x1="${x0}" y1="${PT+ih}" x2="${x1}" y2="${PT+ih}" stroke="var(--line-2)"/>`;
+}
+
+function renderCumChart(){
+  const pend = state.items.filter(i=> i.status!=="home");
+  const byMonth = new Map();
+  for (const i of pend){
+    const ob = orderBy(i); if (!ob) continue;
+    const k = ob.getFullYear()+"-"+String(ob.getMonth()+1).padStart(2,"0");
+    if (!byMonth.has(k)) byMonth.set(k, { k, d:new Date(ob.getFullYear(), ob.getMonth(), 1), v:0 });
+    byMonth.get(k).v += projected(i);
+  }
+  const pts = Array.from(byMonth.values()).sort((a,b)=>a.d-b.d);
+  if (pts.length < 2){ $("#cumChart").innerHTML = ""; $("#cumSide").textContent = ""; return; }
+  let run = 0; pts.forEach(p=>{ run += p.v; p.c = run; });
+
+  /* RTL: earliest month on the right, so the curve builds leftwards. */
+  const W=340, H=170, GUT=38, PADL=10, PT=12, PB=30;
+  const x0 = PADL, x1 = W-GUT, iw = x1-x0, ih = H-PT-PB;
+  const max = niceMax(run);
+  const X = ix => x1 - (iw * ix/(pts.length-1));
+  const Y = v => PT + ih - (v/max)*ih;
+
+  let g = "";
+  for (let k=0;k<=4;k++){
+    const v = max*k/4, yy = Y(v);
+    g += `<line class="grid-l" x1="${x0}" y1="${yy}" x2="${x1}" y2="${yy}"/>
+          <text class="axis-t" x="${x1+5}" y="${yy+4}" text-anchor="start">${nf.format(v/1000)}k</text>`;
+  }
+  const line = pts.map((p,ix)=> (ix?"L":"M") + X(ix).toFixed(1) + " " + Y(p.c).toFixed(1)).join(" ");
+  const base = (PT+ih).toFixed(1);
+  const area = line + ` L ${X(pts.length-1).toFixed(1)} ${base} L ${X(0).toFixed(1)} ${base} Z`;
+  const labels = pts.map((p,ix)=>{
+    if (pts.length > 6 && ix % 2) return "";
+    return `<text class="axis-t" x="${X(ix)}" y="${H-PB+16}" text-anchor="middle">${p.d.toLocaleDateString("he-IL",{month:"short"})}</text>`;
+  }).join("");
+  const last = pts.length-1;
+  $("#cumChart").innerHTML = g +
+    `<path class="area-f" d="${area}"/><path class="area-s" d="${line}"/>` +
+    `<circle class="dot-e" cx="${X(last)}" cy="${Y(pts[last].c)}" r="5"/>` + labels;
+  $("#cumSide").textContent = "עד הכניסה · " + money(run);
+}
+
+function renderRoomBars(){
+  const scale = Math.max(...ROOMS.map(r=> Math.max(totals(roomItems(r.id)).projected, state.roomBudgets[r.id]||0)), 1) * 1.05;
   $("#roomBars").innerHTML = ROOMS.map(r=>{
-    const t = totals(roomItems(r.id));
-    const b = state.roomBudgets[r.id]||0;
-    const diff = b - t.projected;
-    const pw = t.paid/maxScale*100, plw = t.planned/maxScale*100, bw = b/maxScale*100;
-    return `<div class="bar-row" data-room="${r.id}" role="button" tabindex="0">
-      <div class="bar-name">${esc(r.name)}</div>
-      <div class="bar-track" title="${esc(r.name)}: שולם ${money(t.paid)}, מתוכנן ${money(t.planned)}, תקציב ${money(b)}">
-        <i style="width:${pw}%;background:var(--c-done)"></i>
-        <i style="width:${plw}%;background:var(--c-buy);opacity:.55"></i>
-        ${ b>0 ? `<span class="bar-budget" style="inset-inline-start:${Math.min(bw,100)}%"></span>` : "" }
+    const t = totals(roomItems(r.id)), b = state.roomBudgets[r.id]||0, diff = b - t.projected;
+    return `<div class="rowbar" data-room="${r.id}">
+      <div>
+        <div class="nm">${esc(r.name)}</div>
+        <div class="track" title="${esc(r.name)}: שולם ${money(t.paid)}, מתוכנן ${money(t.planned)}, תקציב ${money(b)}">
+          <i style="width:${t.paid/scale*100}%;background:var(--d-done)"></i>
+          <i style="width:${t.planned/scale*100}%;background:var(--d-buy)"></i>
+          ${ b>0 ? `<span class="bmark" style="inset-inline-start:${Math.min(b/scale*100,99.4)}%"></span>` : "" }
+        </div>
       </div>
-      <div class="bar-val">${money(t.projected)} ${ diff<0 ? `<span class="over">(+${money(-diff)})</span>` : `<span style="color:var(--muted)">/ ${money(b)}</span>` }</div>
+      <div class="v">${money(t.projected)}${ diff<0 ? ` <span class="over">+${money(-diff)}</span>` : "" }</div>
     </div>`;
   }).join("");
-  $$("#roomBars .bar-row").forEach(el=>{
-    el.addEventListener("click", ()=> openRoom(el.dataset.room));
-    el.addEventListener("keydown", e=>{ if(e.key==="Enter"){ openRoom(el.dataset.room); }});
+  $$("#roomBars .rowbar").forEach(el=> el.addEventListener("click", ()=> openRoom(el.dataset.room)));
+}
+
+/* ============================================================
+   SHEET — room detail
+   ============================================================ */
+function openSheet(){ $("#sheet").classList.add("on"); $("#scrim").classList.add("on"); }
+function closeSheet(){
+  $("#sheet").classList.remove("on"); $("#scrim").classList.remove("on");
+  uiRoom = null; $("#shExtra").innerHTML = ""; renderPlan();
+}
+function openRoom(id){
+  uiRoom = id; renderPlan(); renderRoom(); openSheet();
+  setTimeout(()=> $("#shClose").focus(), 80);
+}
+
+function renderRoom(){
+  if (!uiRoom) return;
+  const r = ROOM_BY_ID[uiRoom], its = roomItems(uiRoom), t = totals(its);
+  const b = state.roomBudgets[uiRoom] || 0, diff = b - t.projected;
+
+  $("#shTitle").textContent = r.name;
+  $("#shMeta").textContent = (r.area ? r.area.toFixed(2).replace(/\.00$/,"") + " מ״ר · " : "") + (r.dims||"");
+  $("#shExtra").innerHTML = `
+    <div class="sh-stats">
+      <div><div class="l">צפי הוצאה</div><div class="v">${money(t.projected)}</div></div>
+      <div><div class="l">שולם</div><div class="v" style="color:var(--d-done)">${money(t.paid)}</div></div>
+      <div><div class="l">נחסך מהבית</div><div class="v" style="color:var(--d-home)">${money(t.saved)}</div></div>
+    </div>
+    <div class="sh-budget">
+      <label for="shBudget">תקציב לחדר</label>
+      <input type="number" id="shBudget" min="0" step="500" value="${b}">
+      <span class="n" style="color:${diff>=0?"var(--d-done)":"var(--d-alert)"}">
+        ${ diff>=0 ? "נשאר "+money(diff) : "חריגה "+money(-diff) }</span>
+    </div>`;
+
+  $("#shBody").innerHTML =
+    (its.length ? its.map(itemHTML).join("") : `<p class="empty">אין עדיין פריטים בחדר הזה.</p>`) +
+    `<button class="btn ghost block" id="shAdd" style="margin-top:16px">הוספת פריט לחדר</button>`;
+
+  $("#shBudget").addEventListener("change", e=>{
+    state.roomBudgets[uiRoom] = Math.max(0, +e.target.value||0); commit();
+  });
+  $("#shAdd").addEventListener("click", ()=> addItemTo(uiRoom));
+  wireItems();
+}
+
+function itemHTML(i){
+  const ob = orderBy(i), d = daysTo(ob);
+  const late = i.status==="buy" && d!=null && d<0;
+  const delta = (i.status==="done" && i.actual!=null) ? i.actual - i.est : null;
+  return `<div class="item is-${i.status}" data-id="${i.id}">
+    <button class="tick" data-cycle aria-label="שינוי סטטוס">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </button>
+    <div class="body">
+      <input class="nm" value="${esc(i.name)}" data-f="name" aria-label="שם הפריט">
+      <div class="sub">
+        <span>הערכה <input class="price" type="number" min="0" step="50" value="${i.est}" data-f="est" aria-label="מחיר משוער"></span>
+        ${ i.status==="done" ? `<span>בפועל <input class="price" type="number" min="0" step="50" value="${i.actual!=null?i.actual:""}" placeholder="—" data-f="actual" aria-label="מחיר בפועל"></span>` : "" }
+        ${ delta!=null && delta!==0 ? `<span style="color:${delta>0?"var(--d-alert)":"var(--d-done)"};font-weight:700">${delta>0?"▲":"▼"} ${money(Math.abs(delta))}</span>` : "" }
+        ${ i.status!=="home" ? `<span><input class="store" type="text" value="${esc(i.store||"")}" placeholder="חנות" data-f="store" aria-label="חנות"></span>` : "" }
+        ${ i.status==="buy" ? `<span>אספקה <input class="price" style="width:52px" type="number" min="0" max="52" value="${i.lead}" data-f="lead" aria-label="שבועות אספקה"> שב׳</span>
+             <span class="due ${late?"late":""}">${late?"היה להזמין ":"להזמין עד "}${fmtDate(ob)}</span>` : "" }
+      </div>
+      <div class="seg" role="group" aria-label="סטטוס">
+        ${Object.keys(STATUS).map(s=>`<button data-s="${s}" aria-pressed="${i.status===s}">${STATUS[s].short}</button>`).join("")}
+      </div>
+    </div>
+    <button class="del" aria-label="מחיקת ${esc(i.name)}">×</button>
+  </div>`;
+}
+
+function wireItems(){
+  $$("#shBody .item").forEach(el=>{
+    const id = el.dataset.id, it = state.items.find(x=>x.id===id);
+    if (!it) return;
+    $$("input[data-f]", el).forEach(inp=>{
+      inp.addEventListener("change", ()=>{
+        const f = inp.dataset.f;
+        if (f==="name")        it.name = inp.value.trim() || "פריט";
+        else if (f==="store")  it.store = inp.value.trim();
+        else if (f==="actual") it.actual = inp.value==="" ? null : Math.max(0, +inp.value||0);
+        else if (f==="lead")   it.lead = Math.min(52, Math.max(0, +inp.value||0));
+        else                   it.est = Math.max(0, +inp.value||0);
+        commit();
+      });
+    });
+    $$(".seg button", el).forEach(btn=> btn.addEventListener("click", ()=>{
+      it.status = btn.dataset.s;
+      if (it.status==="done" && it.actual==null) it.actual = it.est;
+      commit();
+    }));
+    $("[data-cycle]", el).addEventListener("click", ()=>{
+      it.status = it.status==="buy" ? "done" : (it.status==="done" ? "home" : "buy");
+      if (it.status==="done" && it.actual==null) it.actual = it.est;
+      commit();
+    });
+    $(".del", el).addEventListener("click", ()=>{
+      state.items = state.items.filter(x=>x.id!==id);
+      commit(); toast("הפריט נמחק");
+    });
+  });
+}
+
+function addItemTo(roomId){
+  state.seq = (state.seq||0)+1;
+  const fresh = { id:"i"+state.seq+"_"+Date.now().toString(36), room:roomId,
+                  name:"פריט חדש", est:0, actual:null, status:"buy", lead:2, store:"" };
+  state.items.push(fresh);
+  if (uiRoom !== roomId) openRoom(roomId); else commit();
+  setTimeout(()=>{
+    const rows = $$("#shBody .item"), last = rows[rows.length-1];
+    if (last){ last.scrollIntoView({ block:"nearest" }); const n = $(".nm", last); n.focus(); n.select(); }
+  }, 60);
+}
+
+/* ---- add-item sheet (FAB) ---- */
+function openAddSheet(){
+  uiRoom = null;
+  $("#shTitle").textContent = "הוספת פריט";
+  $("#shMeta").textContent = "בחר חדר והפריט ייפתח לעריכה";
+  $("#shExtra").innerHTML = "";
+  $("#shBody").innerHTML = `<div style="padding:4px 0 8px">${
+    ROOMS.map(r=>`<button class="rcard" data-add="${r.id}" style="margin-bottom:9px;padding:13px 15px">
+      <div class="t"><h4 style="font-size:15px">${esc(r.name)}</h4>
+      <div class="meta">${roomItems(r.id).length} פריטים</div></div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>`).join("")
+  }</div>`;
+  $$("#shBody [data-add]").forEach(b=> b.addEventListener("click", ()=> addItemTo(b.dataset.add)));
+  openSheet();
+}
+
+/* ---- settings sheet ---- */
+function openSettings(){
+  uiRoom = null;
+  $("#shTitle").textContent = "הגדרות";
+  $("#shMeta").textContent = "הנתונים נשמרים במכשיר הזה בלבד";
+  $("#shExtra").innerHTML = "";
+  $("#shBody").innerHTML = `
+    <div class="settings-row"><span class="lbl">תאריך כניסה</span>
+      <input type="date" id="stMove" value="${state.moveIn}"></div>
+    <div class="settings-row"><span class="lbl">תקציב כולל</span>
+      <input type="number" id="stBudget" min="0" step="1000" value="${state.budget}"></div>
+    <p class="lede" style="margin:16px 0 10px">גיבוי שומר קובץ שאפשר לייבא בחזרה אם תחליף מכשיר או תנקה את הדפדפן.</p>
+    <div style="display:flex;gap:9px;flex-wrap:wrap">
+      <button class="btn ghost sm" id="stExport">גיבוי לקובץ</button>
+      <button class="btn ghost sm" id="stImport">ייבוא מגיבוי</button>
+      <button class="btn ghost sm" id="stReset" style="color:var(--d-alert)">איפוס לרשימה המקורית</button>
+    </div>
+    <input type="file" id="stFile" accept="application/json,.json" hidden>`;
+
+  $("#stMove").addEventListener("change", e=>{ state.moveIn = e.target.value; commit(); renderHeader(); });
+  $("#stBudget").addEventListener("change", e=>{ state.budget = Math.max(0, +e.target.value||0); commit(); });
+
+  $("#stExport").addEventListener("click", async ()=>{
+    const data = JSON.stringify(state, null, 2);
+    if (window.claude && window.claude.downloads){
+      try{ await window.claude.downloads.save({ filename:"הבית-החדש-גיבוי.json", data }); toast("הגיבוי נשמר"); return; }
+      catch(err){ if (err && err.code === "declined"){ toast("הגיבוי בוטל"); return; } }
+    }
+    try{ await navigator.clipboard.writeText(data); toast("הגיבוי הועתק ללוח"); }
+    catch(e){ toast("לא הצלחתי לשמור גיבוי"); }
   });
 
-  const t = totals(state.items);
-  const rows = [
-    { nm:"שולם בפועל", v:t.paid,     c:"var(--c-done)", n:t.nDone },
-    { nm:"עוד לקנות",  v:t.planned,  c:"var(--c-buy)",  n:t.nBuy  },
-    { nm:"נחסך מהבית", v:t.saved,    c:"var(--c-home)", n:t.nHome }
-  ];
-  const mx = Math.max(...rows.map(r=>r.v), 1);
-  $("#statusSplit").innerHTML = rows.map(r=>`
-    <div class="l">
-      <span class="swatch" style="background:${r.c}"></span>
-      <span class="nm">${r.nm} <span style="color:var(--muted);font-size:12px">(${r.n})</span></span>
-      <span style="flex:0 0 92px;height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden">
-        <span style="display:block;height:100%;width:${r.v/mx*100}%;background:${r.c};border-radius:4px"></span>
-      </span>
-      <b>${money(r.v)}</b>
-    </div>`).join("");
+  $("#stImport").addEventListener("click", ()=> $("#stFile").click());
+  $("#stFile").addEventListener("change", e=>{
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    const fr = new FileReader();
+    fr.onload = ()=>{
+      try{
+        const s = JSON.parse(fr.result);
+        if (!s || !Array.isArray(s.items)) throw 0;
+        state = normalize(s); closeSheet(); commit(); toast("הגיבוי יובא");
+      }catch(err){ toast("הקובץ לא תקין"); }
+    };
+    fr.readAsText(f);
+  });
 
-  const top = state.items.slice().sort((a,b)=> projected(b)-projected(a)).slice(0,10);
-  const tmx = Math.max(...top.map(projected), 1);
-  $("#topItems").innerHTML = top.map(i=>`
-    <div class="l">
-      <span class="nm" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.name)}
-        <span style="color:var(--muted);font-size:12px">· ${esc(ROOM_BY_ID[i.room].name)}</span></span>
-      <span style="flex:0 0 70px;height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden">
-        <span style="display:block;height:100%;width:${projected(i)/tmx*100}%;background:var(--c-${STATUS[i.status].cls});border-radius:4px"></span>
-      </span>
-      <b>${money(projected(i))}</b>
-    </div>`).join("");
+  let armed = false, armTimer;
+  $("#stReset").addEventListener("click", e=>{
+    const btn = e.currentTarget;
+    if (!armed){
+      armed = true; btn.textContent = "לחץ שוב לאישור";
+      armTimer = setTimeout(()=>{ armed=false; btn.textContent="איפוס לרשימה המקורית"; }, 5000);
+      return;
+    }
+    clearTimeout(armTimer);
+    state = seedState(); closeSheet(); commit(); toast("הרשימה אופסה");
+  });
+
+  openSheet();
 }
 
 /* ============================================================
-   RENDER ORCHESTRATION
+   RENDER + EVENTS
    ============================================================ */
 function renderAll(){
-  renderHeader();
-  renderMap();
-  renderItems();
-  renderTimeline();
-  renderMoney();
-  if (uiRoom) renderDrawer();
+  renderHeader(); renderTiles(); renderPlan(); renderRoomCards();
+  renderPhases(); renderPhaseChart(); renderCumChart(); renderRoomBars();
+  if (uiRoom) renderRoom();
 }
-function commit(change){ Cloud.apply(change); save(); renderAll(); }
 
-/* ============================================================
-   EVENTS
-   ============================================================ */
-$("#moveIn").addEventListener("change", e=>{
-  state.moveIn = e.target.value; commit({ home:{ moveIn: state.moveIn } });
-});
-$("#budget").addEventListener("change", e=>{
-  state.budget = Math.max(0, +e.target.value||0); commit({ home:{ budget: state.budget } });
-});
-$("#drBudget").addEventListener("change", e=>{
-  if (!uiRoom) return;
-  state.roomBudgets[uiRoom] = Math.max(0, +e.target.value||0);
-  commit({ home:{ roomBudgets: state.roomBudgets } });
-});
-
-$("#scrim").addEventListener("click", closeDrawer);
-$("#drClose").addEventListener("click", closeDrawer);
-document.addEventListener("keydown", e=>{ if (e.key==="Escape"){ closeDrawer(); $("#modal").classList.remove("on"); }});
-
-$("#addItem").addEventListener("click", ()=>{
-  if (!uiRoom) return;
-  state.seq = (state.seq||0)+1;
-  const fresh = { id:"i"+state.seq+"_"+Date.now().toString(36), room:uiRoom, name:"פריט חדש", est:0, actual:null, status:"buy", lead:2, store:"" };
-  state.items.push(fresh);
-  commit({ add: fresh });
-  const rows = $$("#drBody .item");
-  const last = rows[rows.length-1];
-  if (last){ last.scrollIntoView({ block:"nearest" }); const inp = $(".item-name", last); inp.focus(); inp.select(); }
-});
-$("#allHome").addEventListener("click", ()=>{
-  if (!uiRoom) return;
-  roomItems(uiRoom).forEach(i=>{ i.status = "home"; });
-  commit({ bulk:true }); toast("כל פריטי החדר סומנו כלוקחים מהבית");
-});
-
-$$(".tab").forEach(tab=>{
-  tab.addEventListener("click", ()=>{
-    uiTab = tab.dataset.panel;
-    $$(".tab").forEach(t=> t.setAttribute("aria-selected", String(t===tab)));
-    $$(".panel").forEach(p=> p.classList.toggle("on", p.id === "panel-"+uiTab));
+$$(".tabbar [data-v]").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    uiView = btn.dataset.v;
+    $$(".tabbar [data-v]").forEach(b=> b.setAttribute("aria-selected", String(b===btn)));
+    $$(".view").forEach(v=> v.classList.toggle("on", v.id === "v-"+uiView));
+    renderHeader();
+    window.scrollTo({ top:0, behavior:"smooth" });
   });
 });
-["#q","#fRoom","#fStatus","#fSort"].forEach(s=>{
-  $(s).addEventListener("input", renderItems);
-  $(s).addEventListener("change", renderItems);
+$$("#roomPills button").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    roomFilter = b.dataset.f;
+    $$("#roomPills button").forEach(x=> x.setAttribute("aria-selected", String(x===b)));
+    renderRoomCards();
+  });
 });
+$("#fab").addEventListener("click", ()=> uiRoom ? addItemTo(uiRoom) : openAddSheet());
+$("#settingsBtn").addEventListener("click", openSettings);
+$("#scrim").addEventListener("click", closeSheet);
+$("#shClose").addEventListener("click", closeSheet);
+document.addEventListener("keydown", e=>{ if (e.key==="Escape") closeSheet(); });
 
-/* theme toggle */
 const root = document.documentElement;
 $("#themeBtn").addEventListener("click", ()=>{
   const cur = root.getAttribute("data-theme");
@@ -1620,110 +1232,8 @@ $("#themeBtn").addEventListener("click", ()=>{
 });
 try{ const th = localStorage.getItem(KEY+".theme"); if (th) root.setAttribute("data-theme", th); }catch(e){}
 
-/* backup / sync / import */
-$("#exportBtn").addEventListener("click", async ()=>{
-  const data = JSON.stringify(state, null, 2);
-  if (window.claude && window.claude.downloads){
-    try{
-      await window.claude.downloads.save({ filename:"הבית-החדש-גיבוי.json", data });
-      toast("הגיבוי נשמר");
-      return;
-    }catch(err){
-      if (err && err.code === "declined"){ toast("הגיבוי בוטל"); return; }
-    }
-  }
-  const ok = await copyText(data);
-  toast(ok ? "הגיבוי הועתק ללוח" : "לא הצלחתי להעתיק — נסה קוד סנכרון");
-});
-
-$("#codeBtn").addEventListener("click", ()=>{
-  $("#mTitle").textContent = "קוד סנכרון";
-  $("#mDesc").textContent = "העתק את הקוד ושלח לבן/בת הזוג. אצלם: לחיצה על ייבוא, הדבקה, והרשימה תהיה זהה לשלך.";
-  $("#mText").value = JSON.stringify(state);
-  $("#mPrimary").textContent = "העתקה";
-  $("#mPrimary").onclick = async ()=>{
-    const ok = await copyText($("#mText").value);
-    toast(ok ? "הקוד הועתק" : "סמן והעתק ידנית");
-  };
-  $("#modal").classList.add("on");
-  setTimeout(()=>{ $("#mText").focus(); $("#mText").select(); }, 60);
-});
-
-$("#importBtn").addEventListener("click", ()=>{
-  $("#mTitle").textContent = "ייבוא";
-  $("#mDesc").textContent = "הדבק כאן קוד סנכרון או תוכן של קובץ גיבוי. הרשימה הנוכחית תוחלף.";
-  $("#mText").value = "";
-  $("#mPrimary").textContent = "ייבוא והחלפה";
-  $("#mPrimary").onclick = ()=>{
-    let s;
-    try{ s = JSON.parse($("#mText").value); }
-    catch(e){ toast("הקוד לא תקין — ודא שהעתקת אותו במלואו"); return; }
-    if (!s || !Array.isArray(s.items)){ toast("הקוד לא מכיל רשימת פריטים"); return; }
-    state = normalize(s);
-    uiRoom = null; closeDrawer();
-    $("#modal").classList.remove("on");
-    commit({ bulk:true }); toast("הרשימה יובאה");
-  };
-  $("#modal").classList.add("on");
-  setTimeout(()=> $("#mText").focus(), 60);
-});
-$("#mClose").addEventListener("click", ()=> $("#modal").classList.remove("on"));
-$("#modal").addEventListener("click", e=>{ if (e.target === $("#modal")) $("#modal").classList.remove("on"); });
-
-let resetArmed = false, resetTimer = null;
-$("#resetBtn").addEventListener("click", e=>{
-  const btn = e.currentTarget;
-  if (!resetArmed){
-    resetArmed = true;
-    btn.textContent = "לחץ שוב לאישור האיפוס";
-    btn.style.color = "var(--c-alert)";
-    clearTimeout(resetTimer);
-    resetTimer = setTimeout(()=>{
-      resetArmed = false; btn.textContent = "איפוס לרשימה המקורית"; btn.style.color = "";
-    }, 5000);
-    return;
-  }
-  clearTimeout(resetTimer);
-  resetArmed = false; btn.textContent = "איפוס לרשימה המקורית"; btn.style.color = "";
-  state = seedState(); uiRoom = null; closeDrawer(); commit({ bulk:true }); toast("הרשימה אופסה");
-});
-
-/* ============================================================
-   BOOT
-   ============================================================ */
-function normalize(s){
-  const out = Object.assign(seedState(), {});
-  out.moveIn = typeof s.moveIn === "string" ? s.moveIn : out.moveIn;
-  out.budget = Number.isFinite(+s.budget) ? +s.budget : out.budget;
-  out.roomBudgets = Object.assign({}, out.roomBudgets, s.roomBudgets||{});
-  out.seq = +s.seq || 0;
-  out.items = (s.items||[]).filter(i=> i && ROOM_BY_ID[i.room]).map((i,ix)=>({
-    id: i.id || ("i"+ix+"_"+Date.now().toString(36)),
-    room: i.room,
-    name: String(i.name||"פריט"),
-    est: Math.max(0, +i.est||0),
-    actual: i.actual==null ? null : Math.max(0, +i.actual||0),
-    status: STATUS[i.status] ? i.status : "buy",
-    lead: Math.min(52, Math.max(0, +i.lead||2)),
-    store: String(i.store||"")
-  }));
-  return out;
-}
-
-$("#shareBtn").addEventListener("click", async ()=>{
-  const ok = await copyText(Cloud.shareLink());
-  toast(ok ? "הקישור הועתק — שלח אותו והנתונים יהיו משותפים" : "העתק את הכתובת משורת הכתובת");
-});
-
 state = normalize(load());
-renderRoomFilter();
 renderAll();
-
-if (hasCloudConfig()){
-  Cloud.init();
-}else{
-  setStatus("local");
-  save();
-}
+save();
 })();
 </script>
