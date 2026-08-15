@@ -387,13 +387,18 @@ body.designing .tabbar{ display:none; }
 .gridline{ stroke: var(--line); stroke-width:1; }
 .dimtxt{ fill: var(--muted); font-size:13px; font-weight:600; text-anchor:middle; direction:ltr; }
 .dimline{ stroke: var(--line-2); stroke-width:1.5; }
+.op{ cursor:grab; }
 .op-door{ stroke: var(--brand); stroke-width:7; stroke-linecap:butt; }
 .op-swing{ fill:none; stroke: var(--brand); stroke-width:1.5; stroke-dasharray:5 4; opacity:.75; }
 .op-win{ stroke: var(--d-home); stroke-width:7; stroke-linecap:butt; }
+.op-hit{ stroke: transparent; stroke-linecap:round; pointer-events: stroke; }
+.op .opsel{ stroke-width:11; }
+.op.sel .op-swing{ opacity:1; stroke-width:2.5; }
 
-.fitem rect, .fitem circle{ fill: color-mix(in srgb, var(--brand) 16%, var(--card)); stroke: var(--brand); stroke-width:2; }
-.fitem.bad rect, .fitem.bad circle{ fill: color-mix(in srgb, var(--d-buy) 18%, var(--card)); stroke: var(--d-buy); }
-.fitem.sel rect, .fitem.sel circle{ stroke-width:3.5; }
+.fitem rect, .fitem circle, .fitem path{ fill: color-mix(in srgb, var(--brand) 16%, var(--card)); stroke: var(--brand); stroke-width:2; }
+.fitem.under rect, .fitem.under circle{ fill: color-mix(in srgb, var(--coral) 20%, var(--card)); stroke: var(--coral); stroke-dasharray:7 5; }
+.fitem.bad rect, .fitem.bad circle, .fitem.bad path{ fill: color-mix(in srgb, var(--d-buy) 18%, var(--card)); stroke: var(--d-buy); }
+.fitem.sel rect, .fitem.sel circle, .fitem.sel path{ stroke-width:3.5; }
 .fitem text{ fill: var(--ink); font-weight:700; text-anchor:middle; pointer-events:none; }
 .fitem .fdim{ fill: var(--muted); font-weight:600; direction:ltr; }
 .guide{ stroke: var(--coral); stroke-width:1.5; stroke-dasharray:6 5; }
@@ -709,13 +714,15 @@ function normalize(s){
       notches: (v.notches||[]).filter(n=> n && CORNERS.some(c=>c[0]===n.c))
         .map(n=>({ c:n.c, w:Math.max(10,+n.w||0), h:Math.max(10,+n.h||0) })),
       openings: (v.openings||[]).filter(o=> o && WALLS.some(w=>w[0]===o.wall))
-        .map(o=>({ type: o.type==="window"?"window":"door", wall:o.wall,
+        .map((o,oi)=>({ id: o.id || ("o"+oi+"_"+Date.now().toString(36)+oi),
+                   type: o.type==="window"?"window":"door", wall:o.wall,
                    pos:Math.max(0,+o.pos||0), len:Math.max(20,+o.len||80), hinge: o.hinge===1?1:0 })),
       items: (v.items||[]).filter(f=> f && +f.w>0 && +f.d>0).map((f,fi)=>({
         id: f.id || ("f"+fi+"_"+Date.now().toString(36)),
         name: String(f.name||"רהיט"),
         w: Math.max(5,+f.w||60), d: Math.max(5,+f.d||60),
-        shape: f.shape==="circle" ? "circle" : "rect",
+        shape: (f.shape==="circle"||f.shape==="corner") ? f.shape : "rect",
+        under: !!f.under,
         x: +f.x||0, y: +f.y||0, rot: ((+f.rot||0)%360+360)%360
       }))
     }));
@@ -1121,18 +1128,38 @@ function pointInPoly(x,y,P){
   return inside;
 }
 /* corners of a rotated piece, clockwise */
-function corners(it){
+/* corners of the full bounding box (used for AABB and wall distances) */
+function boxCorners(it){
   const a=(it.rot||0)*Math.PI/180, c=Math.cos(a), s=Math.sin(a);
   const hw=it.w/2, hd=it.d/2;
   return [[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]].map(([x,y])=>[ it.x + x*c - y*s, it.y + x*s + y*c ]);
 }
 function aabb(it){
-  const C=corners(it), xs=C.map(p=>p[0]), ys=C.map(p=>p[1]);
+  const C=boxCorners(it), xs=C.map(p=>p[0]), ys=C.map(p=>p[1]);
   return { minX:Math.min(...xs), maxX:Math.max(...xs), minY:Math.min(...ys), maxY:Math.max(...ys) };
 }
-/* separating-axis test between two oriented boxes */
-function overlaps(a,b){
-  const A=corners(a), B=corners(b);
+/* leg thickness of an L-shaped piece */
+function legT(it){ return clamp(Math.min(it.w,it.d)*0.55, 30, 110); }
+/* a piece as one or more local (centred, unrotated) rectangles.
+   An L-shape is two rectangles filling two adjacent sides of its box. */
+function localRects(it){
+  if (it.shape==="corner"){
+    const t=legT(it), w=it.w, d=it.d;
+    return [ { cx:0, cy:d/2 - t/2, w:w, d:t },
+             { cx:-w/2 + t/2, cy:-t/2, w:t, d:d - t } ];
+  }
+  return [ { cx:0, cy:0, w:it.w, d:it.d } ];
+}
+function rectWorld(it, lr, shrink){
+  const a=(it.rot||0)*Math.PI/180, c=Math.cos(a), s=Math.sin(a);
+  const hw=lr.w/2 - (shrink||0), hd=lr.d/2 - (shrink||0);
+  return [[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]].map(([x,y])=>{
+    const lx=lr.cx+x, ly=lr.cy+y;
+    return [ it.x + lx*c - ly*s, it.y + lx*s + ly*c ];
+  });
+}
+/* separating-axis test between two convex quads */
+function quadOverlap(A,B){
   for (const poly of [A,B]){
     for (let i=0;i<4;i++){
       const [x1,y1]=poly[i], [x2,y2]=poly[(i+1)%4];
@@ -1144,18 +1171,26 @@ function overlaps(a,b){
   }
   return true;
 }
+function overlaps(a,b){
+  const RA=localRects(a).map(lr=>rectWorld(a,lr)), RB=localRects(b).map(lr=>rectWorld(b,lr));
+  for (const ra of RA) for (const rb of RB) if (quadOverlap(ra,rb)) return true;
+  return false;
+}
 function insideRoom(it, P){
-  /* test a hair inside the piece, so a wall-flush placement still counts */
-  const shrunk = { ...it, w: Math.max(1, it.w-1), d: Math.max(1, it.d-1) };
-  const C = corners(shrunk);
-  const mids = C.map((p,i)=>{ const q=C[(i+1)%4]; return [(p[0]+q[0])/2,(p[1]+q[1])/2]; });
-  return [...C,...mids].every(([x,y])=> pointInPoly(x,y,P));
+  /* every sub-rectangle's corners + edge midpoints, shrunk a hair so a
+     wall-flush placement still counts as inside */
+  for (const lr of localRects(it)){
+    const C = rectWorld(it, lr, 0.5);
+    const mids = C.map((p,i)=>{ const q=C[(i+1)%4]; return [(p[0]+q[0])/2,(p[1]+q[1])/2]; });
+    if (![...C,...mids].every(([x,y])=> pointInPoly(x,y,P))) return false;
+  }
+  return true;
 }
 
 /* Narrow-passage heuristic: a gap that is too small to walk through but
    too big to be "flush", along a run long enough to count as a passage. */
 function passageWarnings(v){
-  const out=[], its=v.items;
+  const out=[], its=v.items.filter(i=>!i.under);   /* rugs don't block passage */
   const gapPair=(a,b)=>{
     const A=aabb(a), B=aabb(b);
     const dx = Math.max(A.minX-B.maxX, B.minX-A.maxX);
@@ -1187,11 +1222,12 @@ function passageWarnings(v){
 }
 function planWarnings(v){
   const P=roomPoly(v), bad=new Set(), msgs=[];
-  for (const it of v.items) if (!insideRoom(it,P)){ bad.add(it.id); msgs.push(`${it.name} חורג מגבולות החדר`); }
-  for (let i=0;i<v.items.length;i++) for (let j=i+1;j<v.items.length;j++)
-    if (overlaps(v.items[i], v.items[j])){
-      bad.add(v.items[i].id); bad.add(v.items[j].id);
-      msgs.push(`${v.items[i].name} ו${v.items[j].name} חופפים`);
+  const solid = v.items.filter(i=>!i.under);   /* rugs are decorative floor — skip them */
+  for (const it of solid) if (!insideRoom(it,P)){ bad.add(it.id); msgs.push(`${it.name} חורג מגבולות החדר`); }
+  for (let i=0;i<solid.length;i++) for (let j=i+1;j<solid.length;j++)
+    if (overlaps(solid[i], solid[j])){
+      bad.add(solid[i].id); bad.add(solid[j].id);
+      msgs.push(`${solid[i].name} ו${solid[j].name} חופפים`);
     }
   return { bad, msgs: msgs.concat(passageWarnings(v)) };
 }
@@ -1202,12 +1238,13 @@ const CATALOG = [
              ["מיטת יחיד וחצי",120,190],["מיטת קומותיים",90,200],["מיטה נפתחת",90,200],
              ["מיטת תינוק",70,140],["שידת החתלה",90,50],["שידת לילה",45,40]]],
   ["ארונות ואחסון", [["ארון 2 דלתות",100,60],["ארון 3 דלתות",150,60],["ארון 4 דלתות",200,60],
-             ["ארון 5 דלתות",250,60],["ארון הזזה",250,65],["ארון פינתי",120,120],
+             ["ארון 5 דלתות",250,60],["ארון הזזה",250,65],["ארון פינתי",120,120,"corner"],
              ["ארון נעליים",80,35],["שידה",100,45],["כוננית",80,35],["ספרייה",120,35],
              ["ארון שירות",60,60]]],
-  ["סלון", [["ספה תלת",220,90],["ספה דו",160,90],["ספה פינתית",260,200],["שזלונג",180,90],
+  ["סלון", [["ספה תלת",220,90],["ספה דו",160,90],["ספה פינתית ר",250,180,"corner"],
+             ["ספת ר גדולה",300,220,"corner"],["שזלונג",180,90],
              ["כורסה",90,85],["פוף",60,60,"circle"],["שולחן סלון",110,60],["שולחן צד",45,45],
-             ["מזנון טלוויזיה",180,40],["שטיח",200,140],["שטיח עגול",160,160,"circle"]]],
+             ["מזנון טלוויזיה",180,40],["שטיח",200,140,"rect",true],["שטיח עגול",160,160,"circle",true]]],
   ["פינת אוכל", [["שולחן אוכל 6",160,90],["שולחן אוכל 8",200,100],["שולחן עגול",120,120,"circle"],
              ["כיסא",45,45],["ספסל אוכל",140,40],["ויטרינה",120,45]]],
   ["חדר שינה", [["שולחן טואלטיקה",100,45],["כיסא טואלטיקה",40,40],["ספסל קצה מיטה",120,40],
@@ -1219,16 +1256,17 @@ const CATALOG = [
              ["ארון תיוק",45,45]]],
   ["אמבטיה", [["אמבטיה",170,70],["מקלחון",90,90],["מקלחון קטן",80,80],["אסלה",40,70],
              ["ארון אמבטיה",80,45],["מכונת כביסה",60,60]]],
-  ["מרפסת וחוץ", [["ספת חוץ",160,80],["כורסת חוץ",75,75],["שולחן חוץ",120,70],
-             ["שולחן מרפסת קטן",60,60,"circle"],["כיסא חוץ",55,55],["נדנדה תלויה",100,100,"circle"],
-             ["גריל",120,60],["ארגז אחסון חוץ",120,60],["עציץ גדול",50,50,"circle"],
-             ["מתלה כביסה",180,60],["שמשייה",250,250,"circle"]]],
+  ["מרפסת וחוץ", [["ספת חוץ",160,80],["ספת חוץ פינתית",220,160,"corner"],["כורסת חוץ",75,75],
+             ["שולחן חוץ",120,70],["שולחן מרפסת קטן",60,60,"circle"],["כיסא חוץ",55,55],
+             ["נדנדה תלויה",100,100,"circle"],["גריל",120,60],["ארגז אחסון חוץ",120,60],
+             ["עציץ גדול",50,50,"circle"],["מתלה כביסה",180,60],["שמשייה",250,250,"circle"],
+             ["שטיח חוץ",180,120,"rect",true]]],
   ["אחר", [["מזגן עילי",100,25],["מיטת טיפולים",190,70],["מראה",60,10],["עמוד תאורה",40,40,"circle"],
              ["פסנתר",150,60],["כספת",50,50]]]
 ];
 
 /* ============================================================ DESIGNER STATE */
-let dz = { room:null, vi:0, sel:null, vb:null, warns:null, showWarns:false };
+let dz = { room:null, vi:0, sel:null, selOp:null, vb:null, warns:null, showWarns:false };
 const dzPlan = ()=> state.plans[dz.room];
 const dzVar  = ()=> { const p=dzPlan(); return p && p.variants[dz.vi]; };
 
@@ -1409,44 +1447,58 @@ function drawPlan(){
     <line class="dimline" x1="${v.w+off}" y1="0" x2="${v.w+off}" y2="${v.h}"/>
     <text class="dimtxt" x="${v.w+off+8}" y="${v.h/2}" transform="rotate(90,${v.w+off+8},${v.h/2})" style="font-size:${vb.w*0.032}px">${v.h}</text>`;
 
-  /* doors and windows sit on the outer walls */
+  /* doors and windows sit on the outer walls and can be dragged along them */
+  const hit = vb.w*0.05;
   const ops = (v.openings||[]).map(o=>{
     const seg = wallSeg(v, o);
     if (!seg) return "";
     const [ax,ay,bx,by] = seg;
-    if (o.type==="window") return `<line class="op-win" x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}"/>`;
-    /* swing arc pivots on the hinge end and opens into the room */
-    const hx = o.hinge===1 ? bx : ax, hy = o.hinge===1 ? by : ay;   /* hinge = arc centre */
-    const sx = o.hinge===1 ? ax : bx, sy = o.hinge===1 ? ay : by;   /* free end on the wall */
-    const dirIn = { top:[0,1], bottom:[0,-1], left:[1,0], right:[-1,0] }[o.wall];
-    const L = Math.hypot(sx-hx, sy-hy);
-    const ex = hx + dirIn[0]*L, ey = hy + dirIn[1]*L;
-    /* sweep direction follows the sign of the cross product, so it is right on every wall */
-    const cross = (sx-hx)*(ey-hy) - (sy-hy)*(ex-hx);
-    const sweep = cross > 0 ? 1 : 0;
-    return `<line class="op-door" x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}"/>
-      <path class="op-swing" d="M ${sx} ${sy} A ${L} ${L} 0 0 ${sweep} ${ex} ${ey}"/>
-      <line class="op-swing" x1="${hx}" y1="${hy}" x2="${ex}" y2="${ey}"/>`;
+    const selo = dz.selOp===o.id ? " sel" : "";
+    let inner;
+    if (o.type==="window"){
+      inner = `<line class="op-win${selo?' opsel':''}" x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}"/>`;
+    } else {
+      const hx = o.hinge===1 ? bx : ax, hy = o.hinge===1 ? by : ay;   /* hinge = arc centre */
+      const sx = o.hinge===1 ? ax : bx, sy = o.hinge===1 ? ay : by;   /* free end on the wall */
+      const dirIn = { top:[0,1], bottom:[0,-1], left:[1,0], right:[-1,0] }[o.wall];
+      const L = Math.hypot(sx-hx, sy-hy);
+      const ex = hx + dirIn[0]*L, ey = hy + dirIn[1]*L;
+      const cross = (sx-hx)*(ey-hy) - (sy-hy)*(ex-hx);   /* sweep sign is right on every wall */
+      const sweep = cross > 0 ? 1 : 0;
+      inner = `<line class="op-door${selo?' opsel':''}" x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}"/>
+        <path class="op-swing" d="M ${sx} ${sy} A ${L} ${L} 0 0 ${sweep} ${ex} ${ey}"/>
+        <line class="op-swing" x1="${hx}" y1="${hy}" x2="${ex}" y2="${ey}"/>`;
+    }
+    return `<g class="op${selo}" data-op="${o.id}">${inner}
+      <line class="op-hit" x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke-width="${hit}"/></g>`;
   }).join("");
 
   const fs = vb.w*0.028, fsd = vb.w*0.023;
-  const items = v.items.map(it=>{
+  const draw = it=>{
     const bad = dz.warns.bad.has(it.id) ? " bad" : "";
     const sel = dz.sel===it.id ? " sel" : "";
-    const shape = it.shape==="circle"
-      ? `<circle cx="0" cy="0" r="${Math.min(it.w,it.d)/2}"/>`
-      : `<rect x="${-it.w/2}" y="${-it.d/2}" width="${it.w}" height="${it.d}" rx="3"/>`;
-    return `<g class="fitem${bad}${sel}" data-f="${it.id}" transform="translate(${it.x},${it.y}) rotate(${it.rot||0})">
+    let shape, ly;
+    if (it.shape==="circle"){ shape = `<circle cx="0" cy="0" r="${Math.min(it.w,it.d)/2}"/>`; ly=0; }
+    else if (it.shape==="corner"){
+      const t=legT(it), w=it.w, d=it.d;
+      shape = `<path d="M ${-w/2} ${-d/2} L ${-w/2+t} ${-d/2} L ${-w/2+t} ${d/2-t} L ${w/2} ${d/2-t} L ${w/2} ${d/2} L ${-w/2} ${d/2} Z"/>`;
+      ly = d/2 - t/2;                     /* label rides the bottom arm, not the empty notch */
+    } else { shape = `<rect x="${-it.w/2}" y="${-it.d/2}" width="${it.w}" height="${it.d}" rx="3"/>`; ly=0; }
+    return `<g class="fitem${it.under?" under":""}${bad}${sel}" data-f="${it.id}" transform="translate(${it.x},${it.y}) rotate(${it.rot||0})">
       ${shape}
-      <text y="${-fsd*0.2}" style="font-size:${fs}px">${esc(it.name)}</text>
-      <text class="fdim" y="${fs*0.95}" style="font-size:${fsd}px">${it.w}×${it.d}</text>
+      <text y="${ly - fsd*0.2}" style="font-size:${fs}px">${esc(it.name)}</text>
+      <text class="fdim" y="${ly + fs*0.95}" style="font-size:${fsd}px">${it.w}×${it.d}</text>
     </g>`;
-  }).join("");
+  };
+  /* rugs (under) paint first so everything else sits on top of them */
+  const under = v.items.filter(i=>i.under).map(draw).join("");
+  const over  = v.items.filter(i=>!i.under).map(draw).join("");
 
   svg.innerHTML = `<path class="floor" d="${polyPath(P)}"/>${grid}
-    <path class="wall" d="${polyPath(P)}"/>${dims}${ops}${items}
+    ${under}<path class="wall" d="${polyPath(P)}"/>${dims}${ops}${over}
     <g id="dzGuides"></g>`;
   $$("#dzSvg .fitem").forEach(g=> g.addEventListener("pointerdown", onItemDown));
+  $$("#dzSvg .op").forEach(g=> g.addEventListener("pointerdown", onOpDown));
 }
 function wallSeg(v,o){
   const L=Math.max(20,o.len), s=Math.max(0,Math.min(o.pos, (o.wall==="top"||o.wall==="bottom"? v.w : v.h)-L));
@@ -1459,6 +1511,21 @@ function wallSeg(v,o){
 /* ---- selection toolbar ---- */
 function renderSelBar(){
   const bar = $("#dzSel"), v = dzVar();
+  const op = v && dz.selOp && (v.openings||[]).find(o=>o.id===dz.selOp);
+  if (op){
+    bar.hidden = false;
+    bar.innerHTML = `<span class="nm">${op.type==="window"?"חלון":"דלת"} · <span class="n" dir="ltr">${op.len} ס״מ</span> · גרור על הקיר</span>
+      ${ op.type==="door" ? `<button data-flip aria-label="היפוך צד"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg></button>`:"" }
+      <button data-edit aria-label="עריכה"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+      <button class="danger" data-del aria-label="מחיקה"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>`;
+    const flip = $("[data-flip]", bar);
+    if (flip) flip.addEventListener("click", ()=>{ op.hinge = op.hinge===1?0:1; save(); renderDesigner(); });
+    $("[data-edit]", bar).addEventListener("click", openOpenings);
+    $("[data-del]", bar).addEventListener("click", ()=>{
+      v.openings = v.openings.filter(o=>o.id!==op.id); dz.selOp=null; save(); renderDesigner(); toast("הוסר");
+    });
+    return;
+  }
   const it = v && v.items.find(i=>i.id===dz.sel);
   if (!it){ bar.hidden = true; bar.innerHTML=""; return; }
   bar.hidden = false;
@@ -1473,7 +1540,7 @@ function renderSelBar(){
     clampIntoRoom(it, v);          /* rotating must not shove it through a wall */
     save(); renderDesigner();
   }));
-  $("[data-dup]", bar).addEventListener("click", ()=> addPiece(it.name, it.w, it.d, it.shape, false, it.rot));
+  $("[data-dup]", bar).addEventListener("click", ()=> addPiece(it.name, it.w, it.d, it.shape, false, it.rot, it.under));
   $("[data-edit]", bar).addEventListener("click", ()=> editPiece(it));
   $("[data-del]", bar).addEventListener("click", ()=>{
     v.items = v.items.filter(i=>i.id!==it.id); dz.sel=null; save(); renderDesigner(); toast("הרהיט הוסר");
@@ -1504,24 +1571,26 @@ function openCatalog(){
   $("#shExtra").innerHTML = "";
   $("#shBody").innerHTML = CATALOG.map(([g, list])=>`
     <div class="cat-g"><h5>${esc(g)}</h5><div class="cat-list">
-      ${list.map(([n,w,d,sh])=>`<button class="cat-i" data-add="${esc(n)}" data-w="${w}" data-d="${d}" data-sh="${sh||"rect"}">
-        ${esc(n)}<small>${w}×${d}</small></button>`).join("")}
+      ${list.map(([n,w,d,sh,under])=>`<button class="cat-i" data-add="${esc(n)}" data-w="${w}" data-d="${d}" data-sh="${sh||"rect"}" data-under="${under?1:0}">
+        ${esc(n)}<small dir="ltr">${w}×${d}</small></button>`).join("")}
     </div></div>`).join("")
     + `<button class="btn ghost block" id="catCustom">רהיט במידות משלי</button>`;
   $$("#shBody [data-add]").forEach(b=> b.addEventListener("click", ()=>
-    addPiece(b.dataset.add, +b.dataset.w, +b.dataset.d, b.dataset.sh)));
+    addPiece(b.dataset.add, +b.dataset.w, +b.dataset.d, b.dataset.sh, false, 0, b.dataset.under==="1")));
   $("#catCustom").addEventListener("click", ()=> addPiece("רהיט", 100, 60, "rect", true));
   openSheet();
 }
-function addPiece(name, w, d, shape, thenEdit, rot){
+function addPiece(name, w, d, shape, thenEdit, rot, under){
   const v = dzVar();
   state.seq = (state.seq||0)+1;
   const it = { id:"f"+state.seq+"_"+Date.now().toString(36), name, w, d, shape:shape||"rect",
                x: Math.round(v.w/2), y: Math.round(v.h/2), rot: rot||0 };
-  /* look for a free spot that is also fully inside the room, scanning
-     outward from the centre; keep the centre if nothing fits */
+  if (under) it.under = true;
+  /* look for a free spot fully inside the room; rugs are allowed to sit
+     under anything, so they don't avoid overlaps and neither piece avoids
+     an existing rug */
   const P = roomPoly(v);
-  const free = c => insideRoom(c,P) && !v.items.some(o=>overlaps(c,o));
+  const free = c => insideRoom(c,P) && (c.under || !v.items.some(o=> !o.under && overlaps(c,o)));
   if (!free(it)){
     const step = 10;
     outer:
@@ -1536,6 +1605,8 @@ function addPiece(name, w, d, shape, thenEdit, rot){
 }
 
 /* ---- doors and windows ---- */
+let opSeq = 0;
+function newOpId(){ return "o"+(++opSeq)+"_"+Date.now().toString(36); }
 function openOpenings(){
   const v = dzVar();
   setHead(`<h3>דלתות וחלונות</h3><div class="meta">מיקום נמדד מתחילת הקיר</div>`);
@@ -1553,6 +1624,7 @@ function openOpenings(){
     + `<button class="btn ghost block sm" id="addOp" style="margin-top:12px">הוספת דלת</button>
        <button class="btn block" id="opSave" style="margin-top:14px">שמירה</button>`;
   const read = ()=> $$("#shBody .notch").map((el,ix)=>({
+    id:   (v.openings[ix] && v.openings[ix].id) || newOpId(),
     type: $("select[data-f=type]", el).value,
     wall: $("select[data-f=wall]", el).value,
     pos:  Math.max(0, +$("input[data-f=pos]", el).value||0),
@@ -1560,7 +1632,7 @@ function openOpenings(){
     hinge: (v.openings[ix] && v.openings[ix].hinge) || 0
   }));
   $("#addOp").addEventListener("click", ()=>{
-    v.openings = read().concat([{ type:"door", wall:"bottom", pos:40, len:80, hinge:0 }]); save(); openOpenings();
+    v.openings = read().concat([{ id:newOpId(), type:"door", wall:"bottom", pos:40, len:80, hinge:0 }]); save(); openOpenings();
   });
   $$("#shBody [data-del]").forEach(b=> b.addEventListener("click", ()=>{
     v.openings = read().filter((_,i)=> i !== +b.dataset.del); save(); openOpenings();
@@ -1575,22 +1647,38 @@ function openOpenings(){
 
 /* ---- pan, zoom, drag ---- */
 const ptrs = new Map();
-let drag = null, pinch = null;
+let drag = null, pinch = null, opdrag = null;
 
 function toWorld(cx, cy){
   const r = $("#dzStage").getBoundingClientRect(), vb = dz.vb;
   return { x: vb.x + (cx-r.left)/r.width*vb.w, y: vb.y + (cy-r.top)/r.height*vb.h };
 }
 function onItemDown(e){
-  const v = dzVar(); if (!v) return;
+  const v = dzVar(); if (!v || ptrs.size>=2) return;
   const id = e.currentTarget.dataset.f, it = v.items.find(i=>i.id===id);
   if (!it) return;
   e.stopPropagation();
-  dz.sel = id; renderSelBar();
+  dz.sel = id; dz.selOp = null; renderSelBar();
   $$("#dzSvg .fitem").forEach(g=> g.classList.toggle("sel", g.dataset.f===id));
   const w = toWorld(e.clientX, e.clientY);
   drag = { id, dx: it.x - w.x, dy: it.y - w.y, moved:false };
   try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(_){}
+}
+/* a door/window drags along its own wall only */
+function onOpDown(e){
+  const v = dzVar(); if (!v || ptrs.size>=2) return;
+  const id = e.currentTarget.dataset.op, o = (v.openings||[]).find(x=>x.id===id);
+  if (!o) return;
+  e.stopPropagation();
+  dz.sel = null; dz.selOp = id; renderSelBar(); drawPlan();
+  opdrag = { id };
+  try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(_){}
+}
+function moveOpening(o, v, w){
+  const horiz = (o.wall==="top"||o.wall==="bottom");
+  const along = horiz ? w.x : w.y;
+  const wallLen = horiz ? v.w : v.h;
+  o.pos = Math.round(clamp(along - o.len/2, 0, Math.max(0, wallLen - o.len)));
 }
 /* keep a piece within the outer walls; oversized pieces centre instead */
 function clampIntoRoom(it, v){
@@ -1627,6 +1715,13 @@ function snapItem(it, v){
 function onMove(e){
   if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, {x:e.clientX,y:e.clientY});
   if (pinch && ptrs.size>=2){ doPinch(); return; }
+  if (opdrag){
+    const v = dzVar(), o = (v.openings||[]).find(x=>x.id===opdrag.id); if (!o) return;
+    moveOpening(o, v, toWorld(e.clientX, e.clientY));
+    drawPlan();
+    if (e.cancelable) e.preventDefault();
+    return;
+  }
   if (drag){
     const v = dzVar(), it = v.items.find(i=>i.id===drag.id); if (!it) return;
     const w = toWorld(e.clientX, e.clientY);
@@ -1689,6 +1784,7 @@ function doPinch(){
 function onUp(e){
   ptrs.delete(e.pointerId);
   if (ptrs.size<2) pinch = null;
+  if (opdrag){ opdrag=null; save(); renderDesigner(); }
   if (drag){ const v=dzVar(); if (v){ const it=v.items.find(i=>i.id===drag.id);
       if (it){ it.x=Math.round(it.x); it.y=Math.round(it.y); } } drag=null; save(); renderDesigner(); }
   if (ptrs.size===0) panFrom = null;
@@ -1709,7 +1805,9 @@ async function exportPlan(){
     .op-door{stroke:${cs.getPropertyValue("--brand")};stroke-width:7}
     .op-swing{fill:none;stroke:${cs.getPropertyValue("--brand")};stroke-width:1.5;stroke-dasharray:5 4}
     .op-win{stroke:${cs.getPropertyValue("--d-home")};stroke-width:7}
-    .fitem rect,.fitem circle{fill:${cs.getPropertyValue("--card-2")};stroke:${cs.getPropertyValue("--brand")};stroke-width:2}
+    .op-hit{display:none}
+    .fitem rect,.fitem circle,.fitem path{fill:${cs.getPropertyValue("--card-2")};stroke:${cs.getPropertyValue("--brand")};stroke-width:2}
+    .fitem.under rect,.fitem.under circle{fill:${cs.getPropertyValue("--card-3")};stroke:${cs.getPropertyValue("--coral")};stroke-dasharray:7 5}
     .fitem text{fill:${cs.getPropertyValue("--ink")};font-weight:700;text-anchor:middle}
     .fitem .fdim{fill:${cs.getPropertyValue("--muted")};font-weight:600}
     text{font-family:Rubik,Arial,sans-serif}`;
@@ -1774,10 +1872,10 @@ $("#dzMenu").addEventListener("click", openDzMenu);
   const stage = $("#dzStage");
   stage.addEventListener("pointerdown", e=>{
     ptrs.set(e.pointerId, {x:e.clientX,y:e.clientY});
-    if (ptrs.size===2){ pinch = { dist:0 }; drag = null; panFrom = null; return; }
-    if (drag) return;
-    if (e.target.closest(".fitem")) return;      /* handled by onItemDown */
-    dz.sel = null; renderSelBar(); drawPlan();
+    if (ptrs.size===2){ pinch = { dist:0 }; drag = null; opdrag = null; panFrom = null; return; }
+    if (drag || opdrag) return;
+    if (e.target.closest(".fitem") || e.target.closest(".op")) return;   /* handled by their own downs */
+    dz.sel = null; dz.selOp = null; renderSelBar(); drawPlan();
     panFrom = { cx:e.clientX, cy:e.clientY, vx:dz.vb.x, vy:dz.vb.y };
   });
   window.addEventListener("pointermove", onMove, { passive:false });
