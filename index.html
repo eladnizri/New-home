@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#E9F2EC" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1714" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -125,12 +125,23 @@
 /* ============================================================ */
 *{ box-sizing:border-box; }
 html,body{ min-height:100%; }
+html{ -webkit-text-size-adjust:100%; }
 body{
   margin:0; color: var(--ink); font-family: var(--ui);
   font-size:15px; line-height:1.5; -webkit-text-size-adjust:100%; -webkit-font-smoothing:antialiased;
   background:
     linear-gradient(160deg, var(--bg1) 0%, var(--bg2) 100%) fixed;
+  /* iPhone feel: no rubber-band, no grey tap flash, no double-tap zoom */
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overflow-x: hidden;
 }
+button, .rcard, .cat-i, .chipn, .tabbar button, .pills button{
+  touch-action: manipulation; -webkit-touch-callout: none;
+}
+/* text stays selectable where it is actually useful */
+input, textarea{ -webkit-user-select:text; user-select:text; }
 h1,h2,h3,h4{ margin:0; font-weight:700; letter-spacing:-.01em; text-wrap:balance; }
 button{ font:inherit; color:inherit; cursor:pointer; border:0; background:transparent; }
 input,select{ font:inherit; color:inherit; }
@@ -556,6 +567,17 @@ const DEFAULT_ROOMS = [
 ];
 const roomById = id => state.rooms.find(r=>r.id===id);
 const roomName = id => { const r = roomById(id); return r ? r.name : "חדר"; };
+
+/* measured dimensions of the real apartment, in cm — used to prefill the
+   planner. treatment is the safe room (ממ״ד). */
+const ROOM_SIZE = {
+  balcony:   [425,500],
+  living:    [450,440],
+  master:    [360,300],
+  bed_elad:  [293,330],
+  bed_itai:  [250,388],
+  treatment: [280,360]
+};
 
 /* [name, estimate ₪, default status] */
 const SEED = {
@@ -1177,18 +1199,32 @@ function planWarnings(v){
 /* ============================================================ CATALOG */
 const CATALOG = [
   ["מיטות", [["מיטה זוגית",160,200],["מיטה זוגית 140",140,200],["מיטת יחיד",90,190],
-             ["מיטת יחיד וחצי",120,190],["מיטת תינוק",70,140],["שידת לילה",45,40]]],
+             ["מיטת יחיד וחצי",120,190],["מיטת קומותיים",90,200],["מיטה נפתחת",90,200],
+             ["מיטת תינוק",70,140],["שידת החתלה",90,50],["שידת לילה",45,40]]],
   ["ארונות ואחסון", [["ארון 2 דלתות",100,60],["ארון 3 דלתות",150,60],["ארון 4 דלתות",200,60],
-             ["ארון הזזה",250,65],["שידה",100,45],["כוננית",80,35]]],
-  ["סלון", [["ספה תלת",220,90],["ספה דו",160,90],["ספה פינתית",260,200],["כורסה",90,85],
-             ["שולחן סלון",110,60],["מזנון טלוויזיה",180,40],["שטיח",200,140]]],
+             ["ארון 5 דלתות",250,60],["ארון הזזה",250,65],["ארון פינתי",120,120],
+             ["ארון נעליים",80,35],["שידה",100,45],["כוננית",80,35],["ספרייה",120,35],
+             ["ארון שירות",60,60]]],
+  ["סלון", [["ספה תלת",220,90],["ספה דו",160,90],["ספה פינתית",260,200],["שזלונג",180,90],
+             ["כורסה",90,85],["פוף",60,60,"circle"],["שולחן סלון",110,60],["שולחן צד",45,45],
+             ["מזנון טלוויזיה",180,40],["שטיח",200,140],["שטיח עגול",160,160,"circle"]]],
   ["פינת אוכל", [["שולחן אוכל 6",160,90],["שולחן אוכל 8",200,100],["שולחן עגול",120,120,"circle"],
-             ["כיסא",45,45]]],
-  ["מטבח וחשמל", [["מקרר",70,70],["תנור",60,60],["מדיח כלים",60,60],["מכונת כביסה",60,60],
-             ["מייבש",60,60],["אי מטבח",200,90],["ארון מטבח",60,60]]],
-  ["עבודה", [["שולחן כתיבה",120,60],["שולחן כתיבה גדול",160,70],["כיסא משרדי",60,60]]],
-  ["אמבטיה", [["אמבטיה",170,70],["מקלחון",90,90],["אסלה",40,70],["ארון אמבטיה",80,45]]],
-  ["אחר", [["מזגן עילי",100,25],["מיטת טיפולים",190,70],["מראה",60,10]]]
+             ["כיסא",45,45],["ספסל אוכל",140,40],["ויטרינה",120,45]]],
+  ["חדר שינה", [["שולחן טואלטיקה",100,45],["כיסא טואלטיקה",40,40],["ספסל קצה מיטה",120,40],
+             ["מראה עומדת",50,40]]],
+  ["מטבח וחשמל", [["מקרר",70,70],["מקרר אמריקאי",90,75],["תנור",60,60],["כיריים",60,60],
+             ["מדיח כלים",60,60],["מכונת כביסה",60,60],["מייבש",60,60],["אי מטבח",200,90],
+             ["ארון מטבח",60,60],["מיקרוגל",50,40]]],
+  ["עבודה", [["שולחן כתיבה",120,60],["שולחן כתיבה גדול",160,70],["כיסא משרדי",60,60],
+             ["ארון תיוק",45,45]]],
+  ["אמבטיה", [["אמבטיה",170,70],["מקלחון",90,90],["מקלחון קטן",80,80],["אסלה",40,70],
+             ["ארון אמבטיה",80,45],["מכונת כביסה",60,60]]],
+  ["מרפסת וחוץ", [["ספת חוץ",160,80],["כורסת חוץ",75,75],["שולחן חוץ",120,70],
+             ["שולחן מרפסת קטן",60,60,"circle"],["כיסא חוץ",55,55],["נדנדה תלויה",100,100,"circle"],
+             ["גריל",120,60],["ארגז אחסון חוץ",120,60],["עציץ גדול",50,50,"circle"],
+             ["מתלה כביסה",180,60],["שמשייה",250,250,"circle"]]],
+  ["אחר", [["מזגן עילי",100,25],["מיטת טיפולים",190,70],["מראה",60,10],["עמוד תאורה",40,40,"circle"],
+             ["פסנתר",150,60],["כספת",50,50]]]
 ];
 
 /* ============================================================ DESIGNER STATE */
@@ -1196,7 +1232,10 @@ let dz = { room:null, vi:0, sel:null, vb:null, warns:null, showWarns:false };
 const dzPlan = ()=> state.plans[dz.room];
 const dzVar  = ()=> { const p=dzPlan(); return p && p.variants[dz.vi]; };
 
-function blankVariant(name){ return { name, w:400, h:350, notches:[], openings:[], items:[] }; }
+function blankVariant(name, roomId){
+  const [w,h] = ROOM_SIZE[roomId] || [400,350];
+  return { name, w, h, notches:[], openings:[], items:[] };
+}
 
 function renderDesignList(){
   $("#designList").innerHTML = state.rooms.map(r=>{
@@ -1205,9 +1244,10 @@ function renderDesignList(){
       <div class="t">
         <h4>${esc(r.name)}</h4>
         <div class="foot">${ v
-          ? `<span class="chipn n">${v.w}×${v.h} ס״מ</span><span class="chipn">${v.items.length} רהיטים</span>`
+          ? `<span class="chipn n" dir="ltr">${v.w}×${v.h} ס״מ</span><span class="chipn">${v.items.length} רהיטים</span>`
              + (p.variants.length>1?`<span class="chipn">${p.variants.length} גרסאות</span>`:"")
-          : `<span class="chipn">טרם עוצב</span>` }</div>
+          : `<span class="chipn">טרם עוצב</span>`
+            + (ROOM_SIZE[r.id] ? `<span class="chipn n" dir="ltr">${ROOM_SIZE[r.id][0]}×${ROOM_SIZE[r.id][1]} ס״מ</span>` : "") }</div>
       </div>
       <span class="btn sm" style="pointer-events:none">${ v ? "המשך" : "התחל עיצוב" }</span>
     </button>`;
@@ -1217,6 +1257,7 @@ function renderDesignList(){
 
 function startDesign(roomId){
   dz.room = roomId; dz.sel = null; dz.showWarns = false;
+  pendingNew = null;              /* never carry a half-filled form to another room */
   const p = state.plans[roomId];
   if (!p){ openRoomSetup(roomId, true); return; }
   dz.vi = Math.min(p.active||0, p.variants.length-1);
@@ -1226,8 +1267,9 @@ function startDesign(roomId){
 /* ---- room size setup (also used for editing an existing room) ---- */
 function openRoomSetup(roomId, isNew){
   const p = state.plans[roomId];
-  const v = isNew ? blankVariant("גרסה א") : p.variants[dz.vi];
-  setHead(`<h3>${isNew?"מידות החדר":"עריכת מידות"}</h3><div class="meta">${esc(roomName(roomId))} · הכל בסנטימטרים</div>`);
+  const v = isNew ? (pendingNew || blankVariant("גרסה א", roomId)) : p.variants[dz.vi];
+  const known = !!ROOM_SIZE[roomId];
+  setHead(`<h3>${isNew?"מידות החדר":"עריכת מידות"}</h3><div class="meta">${esc(roomName(roomId))} · הכל בסנטימטרים${ isNew&&known ? " · מולא לפי המדידה" : "" }</div>`);
   $("#shExtra").innerHTML = "";
   const notchRows = (v.notches||[]).map((n,ix)=>`
     <div class="notch" data-ix="${ix}">
@@ -1423,6 +1465,7 @@ function renderSelBar(){
   bar.innerHTML = `<span class="nm">${esc(it.name)} · <span class="n" dir="ltr">${it.w}×${it.d}</span></span>
     <button data-rot="-15" aria-label="סיבוב שמאלה"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
     <button data-rot="15" aria-label="סיבוב ימינה"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
+    <button data-dup aria-label="שכפול"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
     <button data-edit aria-label="שינוי מידות"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
     <button class="danger" data-del aria-label="מחיקה"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>`;
   $$("[data-rot]", bar).forEach(b=> b.addEventListener("click", ()=>{
@@ -1430,6 +1473,7 @@ function renderSelBar(){
     clampIntoRoom(it, v);          /* rotating must not shove it through a wall */
     save(); renderDesigner();
   }));
+  $("[data-dup]", bar).addEventListener("click", ()=> addPiece(it.name, it.w, it.d, it.shape, false, it.rot));
   $("[data-edit]", bar).addEventListener("click", ()=> editPiece(it));
   $("[data-del]", bar).addEventListener("click", ()=>{
     v.items = v.items.filter(i=>i.id!==it.id); dz.sel=null; save(); renderDesigner(); toast("הרהיט הוסר");
@@ -1469,11 +1513,11 @@ function openCatalog(){
   $("#catCustom").addEventListener("click", ()=> addPiece("רהיט", 100, 60, "rect", true));
   openSheet();
 }
-function addPiece(name, w, d, shape, thenEdit){
+function addPiece(name, w, d, shape, thenEdit, rot){
   const v = dzVar();
   state.seq = (state.seq||0)+1;
   const it = { id:"f"+state.seq+"_"+Date.now().toString(36), name, w, d, shape:shape||"rect",
-               x: Math.round(v.w/2), y: Math.round(v.h/2), rot:0 };
+               x: Math.round(v.w/2), y: Math.round(v.h/2), rot: rot||0 };
   /* look for a free spot that is also fully inside the room, scanning
      outward from the centre; keep the centre if nothing fits */
   const P = roomPoly(v);
