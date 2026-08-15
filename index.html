@@ -340,6 +340,93 @@ input,select{ font:inherit; color:inherit; }
 .toast.on{ opacity:1; transform: translateY(0); }
 .empty{ text-align:center; color:var(--muted); font-size:13.5px; padding:36px 12px; font-weight:500; }
 
+/* ============================================================
+   DESIGNER — to-scale 2D room planner
+   ============================================================ */
+.dz{
+  position:fixed; inset:0; z-index:45; display:none; flex-direction:column;
+  background: var(--app); max-width: var(--appw); margin:0 auto;
+  -webkit-user-select:none; user-select:none;   /* dragging must not select text */
+}
+.dz input{ -webkit-user-select:text; user-select:text; }
+body.designing .dz{ display:flex; }
+body.designing .tabbar{ display:none; }
+
+.dz-top{ display:flex; align-items:center; gap:10px; padding: calc(10px + env(safe-area-inset-top)) 14px 10px; flex:none;
+  background: var(--card); box-shadow: var(--sh-sm); }
+.dz-top .t{ flex:1; min-width:0; }
+.dz-top h3{ font-size:17px; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dz-top .sz{ font-size:11.5px; color:var(--muted); font-weight:600; font-variant-numeric:tabular-nums; }
+.dz-ico{ width:38px; height:38px; border-radius:50%; background: var(--card-2); display:grid; place-items:center; flex:none; color:var(--ink-2); }
+.dz-ico:active{ transform:scale(.94); }
+
+.dz-vars{ display:flex; gap:6px; padding:9px 14px 0; flex:none; align-items:center; }
+.dz-vars button{ border-radius:var(--r-pill); padding:6px 13px; font-size:12.5px; font-weight:700;
+  background: var(--card); color: var(--ink-2); box-shadow: var(--sh-sm); white-space:nowrap; }
+.dz-vars button[aria-selected="true"]{ background: var(--brand); color: var(--brand-ink); }
+.dz-vars .addv{ background: transparent; box-shadow:none; color: var(--muted); font-size:19px; padding:2px 8px; }
+
+.dz-stage{ flex:1; min-height:0; position:relative; margin:10px 14px; border-radius:var(--r-card);
+  background: var(--card); box-shadow: var(--sh); overflow:hidden; touch-action:none; }
+/* only the canvas fills the stage — not icons that live inside it */
+.dz-stage > svg{ display:block; width:100%; height:100%; }
+.dz-warn svg{ width:16px; height:16px; flex:none; }
+.wall{ fill: none; stroke: var(--ink); stroke-width:6; stroke-linejoin:round; }
+.floor{ fill: var(--card-2); }
+.gridline{ stroke: var(--line); stroke-width:1; }
+.dimtxt{ fill: var(--muted); font-size:13px; font-weight:600; text-anchor:middle; direction:ltr; }
+.dimline{ stroke: var(--line-2); stroke-width:1.5; }
+.op-door{ stroke: var(--brand); stroke-width:7; stroke-linecap:butt; }
+.op-swing{ fill:none; stroke: var(--brand); stroke-width:1.5; stroke-dasharray:5 4; opacity:.75; }
+.op-win{ stroke: var(--d-home); stroke-width:7; stroke-linecap:butt; }
+
+.fitem rect, .fitem circle{ fill: color-mix(in srgb, var(--brand) 16%, var(--card)); stroke: var(--brand); stroke-width:2; }
+.fitem.bad rect, .fitem.bad circle{ fill: color-mix(in srgb, var(--d-buy) 18%, var(--card)); stroke: var(--d-buy); }
+.fitem.sel rect, .fitem.sel circle{ stroke-width:3.5; }
+.fitem text{ fill: var(--ink); font-weight:700; text-anchor:middle; pointer-events:none; }
+.fitem .fdim{ fill: var(--muted); font-weight:600; direction:ltr; }
+.guide{ stroke: var(--coral); stroke-width:1.5; stroke-dasharray:6 5; }
+.gapline{ stroke: var(--ink-2); stroke-width:1.5; }
+.gaptxt{ fill: var(--ink); font-size:12px; font-weight:800; text-anchor:middle; direction:ltr;
+  paint-order: stroke; stroke: var(--card); stroke-width:4px; }
+
+.dz-warn{ position:absolute; inset-inline:10px; bottom:10px; background: var(--card);
+  border-radius:16px; box-shadow: var(--sh); padding:10px 13px; font-size:12.5px; font-weight:600;
+  color: var(--d-buy); display:flex; align-items:center; gap:9px; }
+.dz-warn.ok{ color: var(--d-done); }
+.dz-warn .more{ margin-inline-start:auto; color:var(--muted); font-weight:600; }
+.dz-warnlist{ position:absolute; inset-inline:10px; bottom:10px; max-height:46%; overflow-y:auto;
+  background: var(--card); border-radius:16px; box-shadow: var(--sh); padding:12px 14px; font-size:12.5px; }
+.dz-warnlist li{ margin:6px 0; color: var(--ink-2); }
+.dz-warnlist h5{ font-size:13px; margin:0 0 6px; }
+
+.dz-tools{ flex:none; padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); display:flex; gap:9px; align-items:center; }
+.dz-tools .btn{ flex:1; }
+.dz-sel{ flex:none; padding: 0 14px calc(12px + env(safe-area-inset-bottom)); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.dz-sel .nm{ font-size:13.5px; font-weight:700; flex:1; min-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dz-sel button{ width:42px; height:42px; border-radius:14px; background: var(--card); box-shadow: var(--sh-sm);
+  display:grid; place-items:center; color: var(--ink-2); flex:none; }
+.dz-sel button:active{ transform:scale(.94); }
+.dz-sel button.danger{ color: var(--d-buy); }
+
+/* setup / catalog forms */
+.dz-form{ padding:16px; }
+.f2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.fld label{ display:block; font-size:12px; color:var(--muted); font-weight:600; margin-bottom:5px; }
+.fld input, .fld select{ width:100%; background: var(--card-2); border:0; border-radius:12px; padding:11px 13px;
+  font-size:15px; font-variant-numeric:tabular-nums; }
+.notch{ display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--line); font-size:13px; }
+.notch select, .notch input{ background: var(--card-2); border:0; border-radius:10px; padding:7px 9px; font-size:13.5px; }
+.notch input{ width:66px; font-variant-numeric:tabular-nums; }
+.notch .x{ margin-inline-start:auto; color:var(--muted); font-size:18px; padding:2px 6px; }
+
+.cat-g{ margin-bottom:16px; }
+.cat-g h5{ font-size:12px; color:var(--muted); font-weight:700; margin-bottom:8px; }
+.cat-list{ display:flex; flex-wrap:wrap; gap:8px; }
+.cat-i{ background: var(--card-2); border-radius:14px; padding:9px 12px; text-align:start; font-size:13px; font-weight:600; }
+.cat-i:active{ transform:scale(.97); }
+.cat-i small{ display:block; color:var(--muted); font-weight:600; font-size:11px; font-variant-numeric:tabular-nums; direction:ltr; }
+
 @media (prefers-reduced-motion: reduce){ *{ transition-duration:.01ms !important; animation-duration:.01ms !important; } }
 </style>
 </head>
@@ -352,9 +439,6 @@ input,select{ font:inherit; color:inherit; }
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
         <span id="hdDate">—</span>
       </span>
-      <button class="ah-btn" id="settingsBtn" aria-label="הגדרות">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 19l-.1.1A2 2 0 1 1 5 16.3l.1-.1A1.6 1.6 0 0 0 4 13.6H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 5.2 7l-.1-.1A2 2 0 1 1 7.9 4.1L8 4.2a1.6 1.6 0 0 0 2.7-1.1V3a2 2 0 1 1 4 0v.1A1.6 1.6 0 0 0 17.4 4.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/></svg>
-      </button>
       <button class="ah-btn" id="themeBtn" aria-label="החלפת מצב תצוגה">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
       </button>
@@ -389,19 +473,56 @@ input,select{ font:inherit; color:inherit; }
     </div>
   </section>
 
+  <!-- ============ DESIGN ============ -->
+  <section class="view" id="v-design">
+    <p class="lede">בחר חדר, הזן את המידות שלו, וסדר בתוכו רהיטים לפי מידות אמיתיות.</p>
+    <div id="designList"></div>
+  </section>
+
   <nav class="tabbar" role="tablist">
     <button role="tab" data-v="rooms" aria-selected="true">
       <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
       <span class="cap">חדרים</span>
     </button>
-    <button class="fab" id="fab" aria-label="הוספת פריט">
+    <button role="tab" data-v="design" aria-selected="false">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 14h7v7M14 3v7h7"/></svg>
+      <span class="cap">עיצוב</span>
+    </button>
+    <button class="fab" id="fab" aria-label="הוספה">
       <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
     </button>
     <button role="tab" data-v="money" aria-selected="false">
       <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 4 5-7 4 5"/><path d="M3 21h18"/></svg>
       <span class="cap">כספים</span>
     </button>
+    <button id="settingsTab">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 19l-.1.1A2 2 0 1 1 5 16.3l.1-.1A1.6 1.6 0 0 0 4 13.6H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 5.2 7l-.1-.1A2 2 0 1 1 7.9 4.1L8 4.2a1.6 1.6 0 0 0 2.7-1.1V3a2 2 0 1 1 4 0v.1A1.6 1.6 0 0 0 17.4 4.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/></svg>
+      <span class="cap">הגדרות</span>
+    </button>
   </nav>
+</div>
+
+<!-- ============ DESIGNER (full screen) ============ -->
+<div class="dz" id="dz">
+  <div class="dz-top">
+    <button class="dz-ico" id="dzBack" aria-label="חזרה">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
+    <div class="t"><h3 id="dzName">—</h3><div class="sz" id="dzSize"></div></div>
+    <button class="dz-ico" id="dzFit" aria-label="התאמה למסך">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    </button>
+    <button class="dz-ico" id="dzMenu" aria-label="אפשרויות">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+    </button>
+  </div>
+  <div class="dz-vars" id="dzVars"></div>
+  <div class="dz-stage" id="dzStage">
+    <svg id="dzSvg" role="img" aria-label="תוכנית החדר"></svg>
+    <div id="dzWarnWrap"></div>
+  </div>
+  <div class="dz-sel" id="dzSel" hidden></div>
+  <div class="dz-tools" id="dzTools"></div>
 </div>
 
 <div class="scrim" id="scrim"></div>
@@ -522,7 +643,7 @@ function seedState(){
   const roomBudgets = {};
   for (const r of rooms)
     roomBudgets[r.id] = Math.round(items.filter(i=>i.room===r.id).reduce((a,i)=>a+i.est,0)/500)*500;
-  return { v:3, moveIn: defaultMoveIn(), budget:150000, rooms, roomBudgets, items, seq:n };
+  return { v:3, moveIn: defaultMoveIn(), budget:150000, rooms, roomBudgets, items, plans:{}, seq:n };
 }
 function load(){
   try{ const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.items)) return s; }catch(e){}
@@ -554,6 +675,30 @@ function normalize(s){
     actual: i.actual==null ? null : Math.max(0, +i.actual||0),
     status: STATUS[i.status] ? i.status : "buy"
   }));
+
+  /* room layout plans, keyed by room id; anything malformed is dropped */
+  out.plans = {};
+  const sp = s.plans || {};
+  for (const id of Object.keys(sp)){
+    if (!known.has(id)) continue;
+    const variants = (sp[id].variants||[]).filter(v=> v && +v.w>0 && +v.h>0).map((v,vi)=>({
+      name: String(v.name || ("גרסה " + "אבגד"[vi] || "גרסה")),
+      w: Math.max(80, +v.w||400), h: Math.max(80, +v.h||350),
+      notches: (v.notches||[]).filter(n=> n && CORNERS.some(c=>c[0]===n.c))
+        .map(n=>({ c:n.c, w:Math.max(10,+n.w||0), h:Math.max(10,+n.h||0) })),
+      openings: (v.openings||[]).filter(o=> o && WALLS.some(w=>w[0]===o.wall))
+        .map(o=>({ type: o.type==="window"?"window":"door", wall:o.wall,
+                   pos:Math.max(0,+o.pos||0), len:Math.max(20,+o.len||80), hinge: o.hinge===1?1:0 })),
+      items: (v.items||[]).filter(f=> f && +f.w>0 && +f.d>0).map((f,fi)=>({
+        id: f.id || ("f"+fi+"_"+Date.now().toString(36)),
+        name: String(f.name||"רהיט"),
+        w: Math.max(5,+f.w||60), d: Math.max(5,+f.d||60),
+        shape: f.shape==="circle" ? "circle" : "rect",
+        x: +f.x||0, y: +f.y||0, rot: ((+f.rot||0)%360+360)%360
+      }))
+    }));
+    if (variants.length) out.plans[id] = { active: Math.min(+sp[id].active||0, variants.length-1), variants };
+  }
   return out;
 }
 let saveTimer;
@@ -588,8 +733,9 @@ function ring(pct, color){
 
 /* ============================================================ HEADER */
 const VIEW_TITLE = {
-  rooms: ["הבית החדש", ()=> nf.format(state.rooms.length) + " חדרים · " + nf.format(state.items.length) + " פריטים"],
-  money: ["כספים",     ()=> "תקציב " + money(state.budget)]
+  rooms:  ["הבית החדש", ()=> nf.format(state.rooms.length) + " חדרים · " + nf.format(state.items.length) + " פריטים"],
+  design: ["עיצוב חדר", ()=> nf.format(Object.keys(state.plans||{}).length) + " חדרים עוצבו"],
+  money:  ["כספים",     ()=> "תקציב " + money(state.budget)]
 };
 function renderHeader(){
   const m = moveInDate(), d = daysTo(m);
@@ -767,6 +913,7 @@ function renderRoom(){
     state.items = state.items.filter(i=>i.room!==id);
     state.rooms = state.rooms.filter(r2=>r2.id!==id);
     delete state.roomBudgets[id];
+    delete state.plans[id];
     closeSheet(); commit(); toast("החדר נמחק");
   });
   wireItems();
@@ -920,9 +1067,684 @@ function openSettings(){
   window.addEventListener("touchend", up);
 })();
 
+/* ============================================================
+   DESIGNER — geometry
+   All measurements are centimetres. Room origin is its top-left
+   corner; furniture x/y is the piece's CENTRE, rot is degrees.
+   ============================================================ */
+const CORNERS = [["tl","שמאל עליון"],["tr","ימין עליון"],["br","ימין תחתון"],["bl","שמאל תחתון"]];
+const WALLS   = [["top","קיר עליון"],["right","קיר ימין"],["bottom","קיר תחתון"],["left","קיר שמאל"]];
+const PASS_MIN = 70;   // a gap narrower than this can't be walked through
+const PASS_IGN = 15;   // below this it reads as "flush", not a passage
+const SNAP     = 10;   // cm — wall/furniture snapping distance
+
+/* room outline: a rectangle with optional rectangular bites out of corners */
+function roomPoly(p){
+  const w=p.w, h=p.h, n=id=>(p.notches||[]).find(x=>x.c===id);
+  const tl=n("tl"), tr=n("tr"), br=n("br"), bl=n("bl"), P=[];
+  P.push(tl? [tl.w,0] : [0,0]);
+  if (tr){ P.push([w-tr.w,0],[w-tr.w,tr.h],[w,tr.h]); } else P.push([w,0]);
+  if (br){ P.push([w,h-br.h],[w-br.w,h-br.h],[w-br.w,h]); } else P.push([w,h]);
+  if (bl){ P.push([bl.w,h],[bl.w,h-bl.h],[0,h-bl.h]); } else P.push([0,h]);
+  if (tl){ P.push([0,tl.h],[tl.w,tl.h]); }
+  return P;
+}
+function polyPath(P){ return P.map((pt,i)=>(i?"L":"M")+pt[0]+" "+pt[1]).join(" ")+" Z"; }
+function pointInPoly(x,y,P){
+  let inside=false;
+  for (let i=0,j=P.length-1;i<P.length;j=i++){
+    const [xi,yi]=P[i], [xj,yj]=P[j];
+    if (((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/((yj-yi)||1e-9)+xi)) inside=!inside;
+  }
+  return inside;
+}
+/* corners of a rotated piece, clockwise */
+function corners(it){
+  const a=(it.rot||0)*Math.PI/180, c=Math.cos(a), s=Math.sin(a);
+  const hw=it.w/2, hd=it.d/2;
+  return [[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]].map(([x,y])=>[ it.x + x*c - y*s, it.y + x*s + y*c ]);
+}
+function aabb(it){
+  const C=corners(it), xs=C.map(p=>p[0]), ys=C.map(p=>p[1]);
+  return { minX:Math.min(...xs), maxX:Math.max(...xs), minY:Math.min(...ys), maxY:Math.max(...ys) };
+}
+/* separating-axis test between two oriented boxes */
+function overlaps(a,b){
+  const A=corners(a), B=corners(b);
+  for (const poly of [A,B]){
+    for (let i=0;i<4;i++){
+      const [x1,y1]=poly[i], [x2,y2]=poly[(i+1)%4];
+      const ax=-(y2-y1), ay=(x2-x1);
+      const proj = pts => pts.map(([px,py])=>px*ax+py*ay);
+      const pa=proj(A), pb=proj(B);
+      if (Math.max(...pa) <= Math.min(...pb)+1e-6 || Math.max(...pb) <= Math.min(...pa)+1e-6) return false;
+    }
+  }
+  return true;
+}
+function insideRoom(it, P){
+  /* test a hair inside the piece, so a wall-flush placement still counts */
+  const shrunk = { ...it, w: Math.max(1, it.w-1), d: Math.max(1, it.d-1) };
+  const C = corners(shrunk);
+  const mids = C.map((p,i)=>{ const q=C[(i+1)%4]; return [(p[0]+q[0])/2,(p[1]+q[1])/2]; });
+  return [...C,...mids].every(([x,y])=> pointInPoly(x,y,P));
+}
+
+/* Narrow-passage heuristic: a gap that is too small to walk through but
+   too big to be "flush", along a run long enough to count as a passage. */
+function passageWarnings(v){
+  const out=[], its=v.items;
+  const gapPair=(a,b)=>{
+    const A=aabb(a), B=aabb(b);
+    const dx = Math.max(A.minX-B.maxX, B.minX-A.maxX);
+    const dy = Math.max(A.minY-B.maxY, B.minY-A.maxY);
+    const ovY = Math.min(A.maxY,B.maxY)-Math.max(A.minY,B.minY);
+    const ovX = Math.min(A.maxX,B.maxX)-Math.max(A.minX,B.minX);
+    if (dx>0 && dy<0 && ovY>=40 && dx>=PASS_IGN && dx<PASS_MIN) return dx;
+    if (dy>0 && dx<0 && ovX>=40 && dy>=PASS_IGN && dy<PASS_MIN) return dy;
+    return null;
+  };
+  for (let i=0;i<its.length;i++) for (let j=i+1;j<its.length;j++){
+    const g = gapPair(its[i],its[j]);
+    if (g!=null) out.push(`מעבר של ${Math.round(g)} ס״מ בין ${its[i].name} ל${its[j].name}`);
+  }
+  for (const it of its){
+    const A=aabb(it);
+    const runX = A.maxX-A.minX, runY = A.maxY-A.minY;
+    const checks = [
+      ["left",   A.minX,        runY],
+      ["right",  v.w - A.maxX,  runY],
+      ["top",    A.minY,        runX],
+      ["bottom", v.h - A.maxY,  runX]
+    ];
+    for (const [side, gap, run] of checks)
+      if (run>=40 && gap>=PASS_IGN && gap<PASS_MIN)
+        out.push(`מעבר של ${Math.round(gap)} ס״מ בין ${it.name} ל${{left:"קיר שמאל",right:"קיר ימין",top:"קיר עליון",bottom:"קיר תחתון"}[side]}`);
+  }
+  return out;
+}
+function planWarnings(v){
+  const P=roomPoly(v), bad=new Set(), msgs=[];
+  for (const it of v.items) if (!insideRoom(it,P)){ bad.add(it.id); msgs.push(`${it.name} חורג מגבולות החדר`); }
+  for (let i=0;i<v.items.length;i++) for (let j=i+1;j<v.items.length;j++)
+    if (overlaps(v.items[i], v.items[j])){
+      bad.add(v.items[i].id); bad.add(v.items[j].id);
+      msgs.push(`${v.items[i].name} ו${v.items[j].name} חופפים`);
+    }
+  return { bad, msgs: msgs.concat(passageWarnings(v)) };
+}
+
+/* ============================================================ CATALOG */
+const CATALOG = [
+  ["מיטות", [["מיטה זוגית",160,200],["מיטה זוגית 140",140,200],["מיטת יחיד",90,190],
+             ["מיטת יחיד וחצי",120,190],["מיטת תינוק",70,140],["שידת לילה",45,40]]],
+  ["ארונות ואחסון", [["ארון 2 דלתות",100,60],["ארון 3 דלתות",150,60],["ארון 4 דלתות",200,60],
+             ["ארון הזזה",250,65],["שידה",100,45],["כוננית",80,35]]],
+  ["סלון", [["ספה תלת",220,90],["ספה דו",160,90],["ספה פינתית",260,200],["כורסה",90,85],
+             ["שולחן סלון",110,60],["מזנון טלוויזיה",180,40],["שטיח",200,140]]],
+  ["פינת אוכל", [["שולחן אוכל 6",160,90],["שולחן אוכל 8",200,100],["שולחן עגול",120,120,"circle"],
+             ["כיסא",45,45]]],
+  ["מטבח וחשמל", [["מקרר",70,70],["תנור",60,60],["מדיח כלים",60,60],["מכונת כביסה",60,60],
+             ["מייבש",60,60],["אי מטבח",200,90],["ארון מטבח",60,60]]],
+  ["עבודה", [["שולחן כתיבה",120,60],["שולחן כתיבה גדול",160,70],["כיסא משרדי",60,60]]],
+  ["אמבטיה", [["אמבטיה",170,70],["מקלחון",90,90],["אסלה",40,70],["ארון אמבטיה",80,45]]],
+  ["אחר", [["מזגן עילי",100,25],["מיטת טיפולים",190,70],["מראה",60,10]]]
+];
+
+/* ============================================================ DESIGNER STATE */
+let dz = { room:null, vi:0, sel:null, vb:null, warns:null, showWarns:false };
+const dzPlan = ()=> state.plans[dz.room];
+const dzVar  = ()=> { const p=dzPlan(); return p && p.variants[dz.vi]; };
+
+function blankVariant(name){ return { name, w:400, h:350, notches:[], openings:[], items:[] }; }
+
+function renderDesignList(){
+  $("#designList").innerHTML = state.rooms.map(r=>{
+    const p = state.plans[r.id], v = p && p.variants[p.active||0];
+    return `<button class="rcard" data-plan="${r.id}">
+      <div class="t">
+        <h4>${esc(r.name)}</h4>
+        <div class="foot">${ v
+          ? `<span class="chipn n">${v.w}×${v.h} ס״מ</span><span class="chipn">${v.items.length} רהיטים</span>`
+             + (p.variants.length>1?`<span class="chipn">${p.variants.length} גרסאות</span>`:"")
+          : `<span class="chipn">טרם עוצב</span>` }</div>
+      </div>
+      <span class="btn sm" style="pointer-events:none">${ v ? "המשך" : "התחל עיצוב" }</span>
+    </button>`;
+  }).join("") || `<p class="empty">אין חדרים. הוסף חדר במסך החדרים.</p>`;
+  $$("#designList [data-plan]").forEach(b=> b.addEventListener("click", ()=> startDesign(b.dataset.plan)));
+}
+
+function startDesign(roomId){
+  dz.room = roomId; dz.sel = null; dz.showWarns = false;
+  const p = state.plans[roomId];
+  if (!p){ openRoomSetup(roomId, true); return; }
+  dz.vi = Math.min(p.active||0, p.variants.length-1);
+  openDesigner();
+}
+
+/* ---- room size setup (also used for editing an existing room) ---- */
+function openRoomSetup(roomId, isNew){
+  const p = state.plans[roomId];
+  const v = isNew ? blankVariant("גרסה א") : p.variants[dz.vi];
+  setHead(`<h3>${isNew?"מידות החדר":"עריכת מידות"}</h3><div class="meta">${esc(roomName(roomId))} · הכל בסנטימטרים</div>`);
+  $("#shExtra").innerHTML = "";
+  const notchRows = (v.notches||[]).map((n,ix)=>`
+    <div class="notch" data-ix="${ix}">
+      <select data-f="c">${CORNERS.map(([id,lb])=>`<option value="${id}" ${n.c===id?"selected":""}>${lb}</option>`).join("")}</select>
+      <input type="number" data-f="w" value="${n.w}" min="10" aria-label="רוחב החיתוך"> ×
+      <input type="number" data-f="h" value="${n.h}" min="10" aria-label="עומק החיתוך">
+      <button class="x" data-del="${ix}" aria-label="הסרה">×</button>
+    </div>`).join("");
+  $("#shBody").innerHTML = `
+    <div class="f2">
+      <div class="fld"><label for="rw">רוחב (ס״מ)</label><input type="number" id="rw" min="80" step="5" value="${v.w}"></div>
+      <div class="fld"><label for="rh">אורך (ס״מ)</label><input type="number" id="rh" min="80" step="5" value="${v.h}"></div>
+    </div>
+    <p class="lede" style="margin:16px 0 6px">חיתוכי פינות — לחדר בצורת L או לנישה. אפשר לדלג.</p>
+    <div id="notchList">${notchRows}</div>
+    <button class="btn ghost block sm" id="addNotch" style="margin-top:10px">הוספת חיתוך פינה</button>
+    <button class="btn block" id="saveRoom" style="margin-top:18px">${isNew?"התחל לסדר רהיטים":"שמירה"}</button>`;
+
+  const readNotches = ()=> $$("#notchList .notch").map(el=>({
+    c: $("select[data-f=c]", el).value,
+    w: Math.max(10, +$("input[data-f=w]", el).value||0),
+    h: Math.max(10, +$("input[data-f=h]", el).value||0)
+  }));
+  $("#addNotch").addEventListener("click", ()=>{
+    const used = readNotches();
+    const free = CORNERS.map(c=>c[0]).find(c=> !used.some(n=>n.c===c)) || "tl";
+    v.notches = used.concat([{ c:free, w:100, h:80 }]);
+    v.w = Math.max(80, +$("#rw").value||v.w); v.h = Math.max(80, +$("#rh").value||v.h);
+    if (isNew) { pendingNew = v; } openRoomSetup(roomId, isNew);
+  });
+  $$("#notchList [data-del]").forEach(b=> b.addEventListener("click", ()=>{
+    v.notches = readNotches().filter((_,i)=> i !== +b.dataset.del);
+    v.w = Math.max(80, +$("#rw").value||v.w); v.h = Math.max(80, +$("#rh").value||v.h);
+    if (isNew) { pendingNew = v; } openRoomSetup(roomId, isNew);
+  }));
+  $("#saveRoom").addEventListener("click", ()=>{
+    v.w = Math.max(80, +$("#rw").value||400);
+    v.h = Math.max(80, +$("#rh").value||350);
+    v.notches = readNotches().filter(n=> n.w < v.w && n.h < v.h);
+    if (isNew){
+      state.plans[roomId] = { active:0, variants:[v] };
+      dz.vi = 0; pendingNew = null;
+    }
+    save(); closeSheet(); renderDesignList(); openDesigner();
+  });
+  openSheet();
+}
+let pendingNew = null;
+
+/* ---- the editor ---- */
+function openDesigner(){
+  document.body.classList.add("designing");
+  dzFit(); renderDesigner();
+}
+function closeDesigner(){
+  document.body.classList.remove("designing");
+  dz.room = null; dz.sel = null; renderDesignList();
+}
+
+function dzFit(){
+  const v = dzVar(); if (!v) return;
+  const st = $("#dzStage").getBoundingClientRect();
+  if (!st.width || !st.height){ requestAnimationFrame(dzFit); return; }
+  const ar = st.height / st.width;
+  const M = 0.10;                       /* breathing room for the dimension labels */
+  const w = Math.max(v.w/(1-2*M), (v.h/(1-2*M))/ar);
+  const h = w*ar;
+  dz.vb = { x: v.w/2 - w/2, y: v.h/2 - h/2, w, h };
+  renderDesigner();
+}
+
+function renderDesigner(){
+  const v = dzVar(); if (!v) return;
+  const r = roomById(dz.room);
+  $("#dzName").textContent = r ? r.name : "חדר";
+  $("#dzSize").textContent = `${v.w} × ${v.h} ס״מ · ${(v.w*v.h/10000).toFixed(1)} מ״ר`;
+
+  const p = dzPlan();
+  $("#dzVars").innerHTML = p.variants.map((vr,i)=>
+      `<button data-vi="${i}" aria-selected="${i===dz.vi}">${esc(vr.name)}</button>`).join("")
+    + (p.variants.length<4 ? `<button class="addv" id="dzAddVar" aria-label="גרסה נוספת">+</button>` : "");
+  $$("#dzVars [data-vi]").forEach(b=> b.addEventListener("click", ()=>{
+    dz.vi = +b.dataset.vi; dz.sel = null; p.active = dz.vi; save(); dzFit();
+  }));
+  const av = $("#dzAddVar");
+  if (av) av.addEventListener("click", ()=>{
+    const src = dzVar();
+    const copy = JSON.parse(JSON.stringify(src));
+    copy.name = "גרסה " + "אבגד"[p.variants.length];
+    copy.items = copy.items.map(it=>({ ...it, id:"f"+(++state.seq)+"_"+Date.now().toString(36) }));
+    p.variants.push(copy); dz.vi = p.variants.length-1; p.active = dz.vi; save(); dzFit();
+    toast("נוצרה גרסה חדשה עם אותו סידור");
+  });
+
+  dz.warns = planWarnings(v);
+  drawPlan();
+  renderSelBar();
+  $("#dzTools").innerHTML = `<button class="btn" id="dzAdd">הוספת רהיט</button>
+    <button class="btn ghost" id="dzOpen">דלת / חלון</button>`;
+  $("#dzAdd").addEventListener("click", openCatalog);
+  $("#dzOpen").addEventListener("click", openOpenings);
+  renderWarnBox();
+}
+
+function renderWarnBox(){
+  const box = $("#dzWarnWrap"), msgs = dz.warns.msgs;
+  if (dz.showWarns && msgs.length){
+    box.innerHTML = `<div class="dz-warnlist"><h5>${msgs.length} דברים לבדוק</h5>
+      <ul style="margin:0;padding-inline-start:18px">${msgs.map(m=>`<li>${esc(m)}</li>`).join("")}</ul></div>`;
+    box.querySelector(".dz-warnlist").addEventListener("click", ()=>{ dz.showWarns=false; renderWarnBox(); });
+    return;
+  }
+  box.innerHTML = msgs.length
+    ? `<div class="dz-warn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 8v5M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+        ${msgs.length} דברים לבדוק<span class="more">הצג</span></div>`
+    : `<div class="dz-warn ok"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> הסידור תקין</div>`;
+  const w = box.querySelector(".dz-warn");
+  if (msgs.length) w.addEventListener("click", ()=>{ dz.showWarns=true; renderWarnBox(); });
+}
+
+function drawPlan(){
+  const v = dzVar(), vb = dz.vb; if (!v || !vb) return;
+  const P = roomPoly(v);
+  const svg = $("#dzSvg");
+  svg.setAttribute("viewBox", `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+
+  /* 50cm grid inside the room, for a sense of scale */
+  let grid = "";
+  for (let x=50; x<v.w; x+=50) grid += `<line class="gridline" x1="${x}" y1="0" x2="${x}" y2="${v.h}"/>`;
+  for (let y=50; y<v.h; y+=50) grid += `<line class="gridline" x1="0" y1="${y}" x2="${v.w}" y2="${y}"/>`;
+
+  /* wall dimension labels */
+  const off = Math.max(26, vb.w*0.045);
+  const dims = `
+    <line class="dimline" x1="0" y1="${-off}" x2="${v.w}" y2="${-off}"/>
+    <text class="dimtxt" x="${v.w/2}" y="${-off-8}" style="font-size:${vb.w*0.032}px">${v.w}</text>
+    <line class="dimline" x1="${v.w+off}" y1="0" x2="${v.w+off}" y2="${v.h}"/>
+    <text class="dimtxt" x="${v.w+off+8}" y="${v.h/2}" transform="rotate(90,${v.w+off+8},${v.h/2})" style="font-size:${vb.w*0.032}px">${v.h}</text>`;
+
+  /* doors and windows sit on the outer walls */
+  const ops = (v.openings||[]).map(o=>{
+    const seg = wallSeg(v, o);
+    if (!seg) return "";
+    const [ax,ay,bx,by] = seg;
+    if (o.type==="window") return `<line class="op-win" x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}"/>`;
+    /* swing arc pivots on the hinge end and opens into the room */
+    const hx = o.hinge===1 ? bx : ax, hy = o.hinge===1 ? by : ay;   /* hinge = arc centre */
+    const sx = o.hinge===1 ? ax : bx, sy = o.hinge===1 ? ay : by;   /* free end on the wall */
+    const dirIn = { top:[0,1], bottom:[0,-1], left:[1,0], right:[-1,0] }[o.wall];
+    const L = Math.hypot(sx-hx, sy-hy);
+    const ex = hx + dirIn[0]*L, ey = hy + dirIn[1]*L;
+    /* sweep direction follows the sign of the cross product, so it is right on every wall */
+    const cross = (sx-hx)*(ey-hy) - (sy-hy)*(ex-hx);
+    const sweep = cross > 0 ? 1 : 0;
+    return `<line class="op-door" x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}"/>
+      <path class="op-swing" d="M ${sx} ${sy} A ${L} ${L} 0 0 ${sweep} ${ex} ${ey}"/>
+      <line class="op-swing" x1="${hx}" y1="${hy}" x2="${ex}" y2="${ey}"/>`;
+  }).join("");
+
+  const fs = vb.w*0.028, fsd = vb.w*0.023;
+  const items = v.items.map(it=>{
+    const bad = dz.warns.bad.has(it.id) ? " bad" : "";
+    const sel = dz.sel===it.id ? " sel" : "";
+    const shape = it.shape==="circle"
+      ? `<circle cx="0" cy="0" r="${Math.min(it.w,it.d)/2}"/>`
+      : `<rect x="${-it.w/2}" y="${-it.d/2}" width="${it.w}" height="${it.d}" rx="3"/>`;
+    return `<g class="fitem${bad}${sel}" data-f="${it.id}" transform="translate(${it.x},${it.y}) rotate(${it.rot||0})">
+      ${shape}
+      <text y="${-fsd*0.2}" style="font-size:${fs}px">${esc(it.name)}</text>
+      <text class="fdim" y="${fs*0.95}" style="font-size:${fsd}px">${it.w}×${it.d}</text>
+    </g>`;
+  }).join("");
+
+  svg.innerHTML = `<path class="floor" d="${polyPath(P)}"/>${grid}
+    <path class="wall" d="${polyPath(P)}"/>${dims}${ops}${items}
+    <g id="dzGuides"></g>`;
+  $$("#dzSvg .fitem").forEach(g=> g.addEventListener("pointerdown", onItemDown));
+}
+function wallSeg(v,o){
+  const L=Math.max(20,o.len), s=Math.max(0,Math.min(o.pos, (o.wall==="top"||o.wall==="bottom"? v.w : v.h)-L));
+  if (o.wall==="top")    return [s,0,s+L,0];
+  if (o.wall==="bottom") return [s,v.h,s+L,v.h];
+  if (o.wall==="left")   return [0,s,0,s+L];
+  return [v.w,s,v.w,s+L];
+}
+
+/* ---- selection toolbar ---- */
+function renderSelBar(){
+  const bar = $("#dzSel"), v = dzVar();
+  const it = v && v.items.find(i=>i.id===dz.sel);
+  if (!it){ bar.hidden = true; bar.innerHTML=""; return; }
+  bar.hidden = false;
+  bar.innerHTML = `<span class="nm">${esc(it.name)} · <span class="n" dir="ltr">${it.w}×${it.d}</span></span>
+    <button data-rot="-15" aria-label="סיבוב שמאלה"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+    <button data-rot="15" aria-label="סיבוב ימינה"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
+    <button data-edit aria-label="שינוי מידות"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+    <button class="danger" data-del aria-label="מחיקה"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>`;
+  $$("[data-rot]", bar).forEach(b=> b.addEventListener("click", ()=>{
+    it.rot = (((it.rot||0) + +b.dataset.rot) % 360 + 360) % 360;
+    clampIntoRoom(it, v);          /* rotating must not shove it through a wall */
+    save(); renderDesigner();
+  }));
+  $("[data-edit]", bar).addEventListener("click", ()=> editPiece(it));
+  $("[data-del]", bar).addEventListener("click", ()=>{
+    v.items = v.items.filter(i=>i.id!==it.id); dz.sel=null; save(); renderDesigner(); toast("הרהיט הוסר");
+  });
+}
+function editPiece(it){
+  setHead(`<h3>מידות הרהיט</h3><div class="meta">${esc(it.name)}</div>`);
+  $("#shExtra").innerHTML = "";
+  $("#shBody").innerHTML = `
+    <div class="fld" style="margin-bottom:12px"><label for="pn">שם</label><input type="text" id="pn" value="${esc(it.name)}"></div>
+    <div class="f2">
+      <div class="fld"><label for="pw">רוחב (ס״מ)</label><input type="number" id="pw" min="5" value="${it.w}"></div>
+      <div class="fld"><label for="pd">עומק (ס״מ)</label><input type="number" id="pd" min="5" value="${it.d}"></div>
+    </div>
+    <button class="btn block" id="pSave" style="margin-top:18px">שמירה</button>`;
+  $("#pSave").addEventListener("click", ()=>{
+    it.name = $("#pn").value.trim() || it.name;
+    it.w = Math.max(5, +$("#pw").value||it.w);
+    it.d = Math.max(5, +$("#pd").value||it.d);
+    save(); closeSheet(); renderDesigner();
+  });
+  openSheet();
+}
+
+/* ---- catalog ---- */
+function openCatalog(){
+  setHead(`<h3>הוספת רהיט</h3><div class="meta">המידות ניתנות לשינוי אחרי ההוספה</div>`);
+  $("#shExtra").innerHTML = "";
+  $("#shBody").innerHTML = CATALOG.map(([g, list])=>`
+    <div class="cat-g"><h5>${esc(g)}</h5><div class="cat-list">
+      ${list.map(([n,w,d,sh])=>`<button class="cat-i" data-add="${esc(n)}" data-w="${w}" data-d="${d}" data-sh="${sh||"rect"}">
+        ${esc(n)}<small>${w}×${d}</small></button>`).join("")}
+    </div></div>`).join("")
+    + `<button class="btn ghost block" id="catCustom">רהיט במידות משלי</button>`;
+  $$("#shBody [data-add]").forEach(b=> b.addEventListener("click", ()=>
+    addPiece(b.dataset.add, +b.dataset.w, +b.dataset.d, b.dataset.sh)));
+  $("#catCustom").addEventListener("click", ()=> addPiece("רהיט", 100, 60, "rect", true));
+  openSheet();
+}
+function addPiece(name, w, d, shape, thenEdit){
+  const v = dzVar();
+  state.seq = (state.seq||0)+1;
+  const it = { id:"f"+state.seq+"_"+Date.now().toString(36), name, w, d, shape:shape||"rect",
+               x: Math.round(v.w/2), y: Math.round(v.h/2), rot:0 };
+  /* look for a free spot that is also fully inside the room, scanning
+     outward from the centre; keep the centre if nothing fits */
+  const P = roomPoly(v);
+  const free = c => insideRoom(c,P) && !v.items.some(o=>overlaps(c,o));
+  if (!free(it)){
+    const step = 10;
+    outer:
+    for (let y = it.d/2; y <= v.h - it.d/2 + 0.1; y += step)
+      for (let x = it.w/2; x <= v.w - it.w/2 + 0.1; x += step){
+        const c = { ...it, x:Math.round(x), y:Math.round(y) };
+        if (free(c)){ it.x=c.x; it.y=c.y; break outer; }
+      }
+  }
+  v.items.push(it); dz.sel = it.id; save(); closeSheet(); renderDesigner();
+  if (thenEdit) editPiece(it);
+}
+
+/* ---- doors and windows ---- */
+function openOpenings(){
+  const v = dzVar();
+  setHead(`<h3>דלתות וחלונות</h3><div class="meta">מיקום נמדד מתחילת הקיר</div>`);
+  $("#shExtra").innerHTML = "";
+  const rows = (v.openings||[]).map((o,ix)=>`
+    <div class="notch" data-ix="${ix}">
+      <select data-f="type"><option value="door" ${o.type==="door"?"selected":""}>דלת</option><option value="window" ${o.type==="window"?"selected":""}>חלון</option></select>
+      <select data-f="wall">${WALLS.map(([id,lb])=>`<option value="${id}" ${o.wall===id?"selected":""}>${lb}</option>`).join("")}</select>
+      <input type="number" data-f="pos" value="${o.pos}" aria-label="מיקום"> מ־
+      <input type="number" data-f="len" value="${o.len}" aria-label="רוחב"> רוחב
+      ${o.type==="door"?`<button class="x" data-flip="${ix}" aria-label="היפוך צד ציר">⇄</button>`:""}
+      <button class="x" data-del="${ix}" aria-label="הסרה">×</button>
+    </div>`).join("");
+  $("#shBody").innerHTML = (rows||`<p class="empty">אין עדיין דלתות או חלונות.</p>`)
+    + `<button class="btn ghost block sm" id="addOp" style="margin-top:12px">הוספת דלת</button>
+       <button class="btn block" id="opSave" style="margin-top:14px">שמירה</button>`;
+  const read = ()=> $$("#shBody .notch").map((el,ix)=>({
+    type: $("select[data-f=type]", el).value,
+    wall: $("select[data-f=wall]", el).value,
+    pos:  Math.max(0, +$("input[data-f=pos]", el).value||0),
+    len:  Math.max(20, +$("input[data-f=len]", el).value||80),
+    hinge: (v.openings[ix] && v.openings[ix].hinge) || 0
+  }));
+  $("#addOp").addEventListener("click", ()=>{
+    v.openings = read().concat([{ type:"door", wall:"bottom", pos:40, len:80, hinge:0 }]); save(); openOpenings();
+  });
+  $$("#shBody [data-del]").forEach(b=> b.addEventListener("click", ()=>{
+    v.openings = read().filter((_,i)=> i !== +b.dataset.del); save(); openOpenings();
+  }));
+  $$("#shBody [data-flip]").forEach(b=> b.addEventListener("click", ()=>{
+    const arr = read(); arr[+b.dataset.flip].hinge = arr[+b.dataset.flip].hinge===1?0:1;
+    v.openings = arr; save(); openOpenings();
+  }));
+  $("#opSave").addEventListener("click", ()=>{ v.openings = read(); save(); closeSheet(); renderDesigner(); });
+  openSheet();
+}
+
+/* ---- pan, zoom, drag ---- */
+const ptrs = new Map();
+let drag = null, pinch = null;
+
+function toWorld(cx, cy){
+  const r = $("#dzStage").getBoundingClientRect(), vb = dz.vb;
+  return { x: vb.x + (cx-r.left)/r.width*vb.w, y: vb.y + (cy-r.top)/r.height*vb.h };
+}
+function onItemDown(e){
+  const v = dzVar(); if (!v) return;
+  const id = e.currentTarget.dataset.f, it = v.items.find(i=>i.id===id);
+  if (!it) return;
+  e.stopPropagation();
+  dz.sel = id; renderSelBar();
+  $$("#dzSvg .fitem").forEach(g=> g.classList.toggle("sel", g.dataset.f===id));
+  const w = toWorld(e.clientX, e.clientY);
+  drag = { id, dx: it.x - w.x, dy: it.y - w.y, moved:false };
+  try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(_){}
+}
+/* keep a piece within the outer walls; oversized pieces centre instead */
+function clampIntoRoom(it, v){
+  const A0 = aabb({ ...it, x:0, y:0 });
+  const hx = (A0.maxX-A0.minX)/2, hy = (A0.maxY-A0.minY)/2;
+  it.x = (hx*2 <= v.w) ? Math.round(clamp(it.x, hx, v.w-hx)) : Math.round(v.w/2);
+  it.y = (hy*2 <= v.h) ? Math.round(clamp(it.y, hy, v.h-hy)) : Math.round(v.h/2);
+}
+function snapItem(it, v){
+  const A = aabb(it), gs = [];
+  const half = { x:(A.maxX-A.minX)/2, y:(A.maxY-A.minY)/2 };
+  const cand = { x:[], y:[] };
+  /* walls */
+  cand.x.push([0 + half.x, 0], [v.w - half.x, v.w]);
+  cand.y.push([0 + half.y, 0], [v.h - half.y, v.h]);
+  /* other pieces: align edges */
+  for (const o of v.items){
+    if (o.id===it.id) continue;
+    const B = aabb(o);
+    cand.x.push([B.minX - half.x, B.minX], [B.maxX + half.x, B.maxX], [(B.minX+B.maxX)/2, null]);
+    cand.y.push([B.minY - half.y, B.minY], [B.maxY + half.y, B.maxY], [(B.minY+B.maxY)/2, null]);
+  }
+  for (const ax of ["x","y"]){
+    let best=null;
+    for (const [target, line] of cand[ax]){
+      const dd = Math.abs(it[ax]-target);
+      if (dd<=SNAP && (!best || dd<best.d)) best={ d:dd, target, line };
+    }
+    if (best){ it[ax] = best.target; gs.push([ax, best.line]); }
+    else it[ax] = Math.round(it[ax]/5)*5;   /* fall back to a 5 cm grid */
+  }
+  return gs;
+}
+function onMove(e){
+  if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, {x:e.clientX,y:e.clientY});
+  if (pinch && ptrs.size>=2){ doPinch(); return; }
+  if (drag){
+    const v = dzVar(), it = v.items.find(i=>i.id===drag.id); if (!it) return;
+    const w = toWorld(e.clientX, e.clientY);
+    /* a piece cannot be pushed through an outer wall: the travel limit is
+       exactly the flush position, so sliding into a wall parks it there.
+       Pieces too big for the room stay centred and get flagged instead. */
+    const A0 = aabb({ ...it, x:0, y:0 });
+    const hx = (A0.maxX-A0.minX)/2, hy = (A0.maxY-A0.minY)/2;
+    const nx = w.x + drag.dx, ny = w.y + drag.dy;
+    it.x = (hx*2 <= v.w) ? clamp(nx, hx, v.w-hx) : v.w/2;
+    it.y = (hy*2 <= v.h) ? clamp(ny, hy, v.h-hy) : v.h/2;
+    const guides = snapItem(it, v);
+    drag.moved = true;
+    dz.warns = planWarnings(v);
+    drawPlan(); drawGuides(it, guides, v);
+    if (e.cancelable) e.preventDefault();
+    return;
+  }
+  if (pinch===null && ptrs.size===1 && drag===null && panFrom){
+    const vb = dz.vb, r = $("#dzStage").getBoundingClientRect();
+    const dx = (e.clientX - panFrom.cx)/r.width*vb.w, dy = (e.clientY - panFrom.cy)/r.height*vb.h;
+    dz.vb = { ...vb, x: panFrom.vx - dx, y: panFrom.vy - dy };
+    drawPlan();
+    if (e.cancelable) e.preventDefault();
+  }
+}
+/* live distance-to-wall readout while dragging */
+function drawGuides(it, guides, v){
+  const A = aabb(it), g = $("#dzGuides"); if (!g) return;
+  const fs = dz.vb.w*0.028;
+  const L = (x1,y1,x2,y2,val)=>`<line class="gapline" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>
+    <text class="gaptxt" x="${(x1+x2)/2}" y="${(y1+y2)/2 - fs*0.25}" style="font-size:${fs}px">${Math.round(val)}</text>`;
+  const midY = (A.minY+A.maxY)/2, midX = (A.minX+A.maxX)/2;
+  let out = "";
+  out += L(0, midY, A.minX, midY, A.minX);
+  out += L(A.maxX, midY, v.w, midY, v.w-A.maxX);
+  out += L(midX, 0, midX, A.minY, A.minY);
+  out += L(midX, A.maxY, midX, v.h, v.h-A.maxY);
+  for (const [ax, line] of guides){
+    if (line==null) continue;
+    out += ax==="x" ? `<line class="guide" x1="${line}" y1="${-40}" x2="${line}" y2="${v.h+40}"/>`
+                    : `<line class="guide" x1="${-40}" y1="${line}" x2="${v.w+40}" y2="${line}"/>`;
+  }
+  g.innerHTML = out;
+}
+let panFrom = null;
+function doPinch(){
+  const [a,b] = Array.from(ptrs.values());
+  const dist = Math.hypot(a.x-b.x, a.y-b.y);
+  const mid  = { x:(a.x+b.x)/2, y:(a.y+b.y)/2 };
+  if (!pinch.dist){ pinch.dist = dist; pinch.mid = mid; pinch.vb = {...dz.vb}; return; }
+  const k = clamp(pinch.dist/dist, 0.2, 5);
+  const r = $("#dzStage").getBoundingClientRect();
+  const nw = clamp(pinch.vb.w * k, 60, 6000), nh = nw * (pinch.vb.h/pinch.vb.w);
+  const fx = (pinch.mid.x - r.left)/r.width, fy = (pinch.mid.y - r.top)/r.height;
+  const wx = pinch.vb.x + fx*pinch.vb.w, wy = pinch.vb.y + fy*pinch.vb.h;
+  dz.vb = { x: wx - fx*nw, y: wy - fy*nh, w:nw, h:nh };
+  drawPlan();
+}
+function onUp(e){
+  ptrs.delete(e.pointerId);
+  if (ptrs.size<2) pinch = null;
+  if (drag){ const v=dzVar(); if (v){ const it=v.items.find(i=>i.id===drag.id);
+      if (it){ it.x=Math.round(it.x); it.y=Math.round(it.y); } } drag=null; save(); renderDesigner(); }
+  if (ptrs.size===0) panFrom = null;
+}
+
+/* ---- export ---- */
+async function exportPlan(){
+  const v = dzVar(); if (!v) return;
+  const src = $("#dzSvg");
+  const clone = src.cloneNode(true);
+  const g = clone.querySelector("#dzGuides"); if (g) g.remove();
+  /* inline the token colours so the exported file stands on its own */
+  const cs = getComputedStyle(document.documentElement);
+  let css = `.floor{fill:${cs.getPropertyValue("--card-2")}}.wall{fill:none;stroke:${cs.getPropertyValue("--ink")};stroke-width:6}
+    .gridline{stroke:${cs.getPropertyValue("--line")};stroke-width:1}
+    .dimline{stroke:${cs.getPropertyValue("--line-2")};stroke-width:1.5}
+    .dimtxt{fill:${cs.getPropertyValue("--muted")};font-weight:600;text-anchor:middle}
+    .op-door{stroke:${cs.getPropertyValue("--brand")};stroke-width:7}
+    .op-swing{fill:none;stroke:${cs.getPropertyValue("--brand")};stroke-width:1.5;stroke-dasharray:5 4}
+    .op-win{stroke:${cs.getPropertyValue("--d-home")};stroke-width:7}
+    .fitem rect,.fitem circle{fill:${cs.getPropertyValue("--card-2")};stroke:${cs.getPropertyValue("--brand")};stroke-width:2}
+    .fitem text{fill:${cs.getPropertyValue("--ink")};font-weight:700;text-anchor:middle}
+    .fitem .fdim{fill:${cs.getPropertyValue("--muted")};font-weight:600}
+    text{font-family:Rubik,Arial,sans-serif}`;
+  const st = document.createElementNS("http://www.w3.org/2000/svg","style");
+  st.textContent = css; clone.insertBefore(st, clone.firstChild);
+  clone.setAttribute("xmlns","http://www.w3.org/2000/svg");
+  const pad = 60;
+  clone.setAttribute("viewBox", `${-pad} ${-pad} ${v.w+pad*2} ${v.h+pad*2}`);
+  const W = 1400, H = Math.round(W*(v.h+pad*2)/(v.w+pad*2));
+  clone.setAttribute("width", W); clone.setAttribute("height", H);
+  const svgText = new XMLSerializer().serializeToString(clone);
+  const img = new Image();
+  const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgText);
+  await new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; img.src=url; }).catch(()=>{});
+  const cv = document.createElement("canvas"); cv.width=W; cv.height=H;
+  const ctx = cv.getContext("2d");
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,W,H);
+  try{ ctx.drawImage(img,0,0,W,H); }catch(e){ toast("הייצוא נכשל"); return; }
+  const blob = await new Promise(r=> cv.toBlob(r, "image/png"));
+  if (!blob){ toast("הייצוא נכשל"); return; }
+  const fname = `${roomName(dz.room)}-${dzVar().name}.png`.replace(/\s+/g,"-");
+  const file = new File([blob], fname, { type:"image/png" });
+  /* the share sheet is the reliable "save image" path on iOS */
+  if (navigator.canShare && navigator.canShare({ files:[file] })){
+    try{ await navigator.share({ files:[file] }); return; }catch(e){ if (e && e.name==="AbortError") return; }
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = fname; a.click();
+  setTimeout(()=> URL.revokeObjectURL(a.href), 4000);
+  toast("התוכנית נשמרה כתמונה");
+}
+
+/* ---- designer menu ---- */
+function openDzMenu(){
+  const p = dzPlan();
+  setHead(`<h3>אפשרויות</h3><div class="meta">${esc(roomName(dz.room))} · ${esc(dzVar().name)}</div>`);
+  $("#shExtra").innerHTML = "";
+  $("#shBody").innerHTML = `
+    <button class="btn ghost block" id="mSize">שינוי מידות החדר</button>
+    <button class="btn ghost block" id="mImg" style="margin-top:9px">שמירת תמונה של התוכנית</button>
+    ${ p.variants.length>1 ? `<button class="btn ghost block" id="mDelVar" style="margin-top:9px;color:var(--d-buy)">מחיקת הגרסה הזו</button>`:"" }
+    <button class="btn ghost block" id="mDelPlan" style="margin-top:9px;color:var(--d-buy)">מחיקת התוכנית של החדר</button>`;
+  $("#mSize").addEventListener("click", ()=> openRoomSetup(dz.room, false));
+  $("#mImg").addEventListener("click", ()=>{ closeSheet(); setTimeout(exportPlan, 250); });
+  const dv = $("#mDelVar");
+  if (dv) dv.addEventListener("click", ()=>{
+    p.variants.splice(dz.vi,1); dz.vi = 0; p.active = 0; save(); closeSheet(); dzFit(); toast("הגרסה נמחקה");
+  });
+  let armed=false;
+  $("#mDelPlan").addEventListener("click", e=>{
+    if (!armed){ armed=true; e.currentTarget.textContent="לחץ שוב למחיקת התוכנית"; return; }
+    delete state.plans[dz.room]; save(); closeSheet(); closeDesigner(); toast("התוכנית נמחקה");
+  });
+  openSheet();
+}
+
+/* ---- designer wiring ---- */
+$("#dzBack").addEventListener("click", closeDesigner);
+$("#dzFit").addEventListener("click", dzFit);
+$("#dzMenu").addEventListener("click", openDzMenu);
+(function(){
+  const stage = $("#dzStage");
+  stage.addEventListener("pointerdown", e=>{
+    ptrs.set(e.pointerId, {x:e.clientX,y:e.clientY});
+    if (ptrs.size===2){ pinch = { dist:0 }; drag = null; panFrom = null; return; }
+    if (drag) return;
+    if (e.target.closest(".fitem")) return;      /* handled by onItemDown */
+    dz.sel = null; renderSelBar(); drawPlan();
+    panFrom = { cx:e.clientX, cy:e.clientY, vx:dz.vb.x, vy:dz.vb.y };
+  });
+  window.addEventListener("pointermove", onMove, { passive:false });
+  window.addEventListener("pointerup", onUp);
+  window.addEventListener("pointercancel", onUp);
+  window.addEventListener("resize", ()=>{ if (document.body.classList.contains("designing")) dzFit(); });
+})();
+
 /* ============================================================ RENDER + EVENTS */
 function renderAll(){
-  renderHeader(); renderHero(); renderRoomCards(); renderMoney();
+  renderHeader(); renderHero(); renderRoomCards(); renderMoney(); renderDesignList();
   if (uiRoom) renderRoom();
 }
 $$(".tabbar [data-v]").forEach(btn=>{
@@ -940,8 +1762,11 @@ $$("#roomPills button").forEach(b=>{
     renderRoomCards();
   });
 });
-$("#fab").addEventListener("click", ()=> uiRoom ? addItemTo(uiRoom) : openAddSheet());
-$("#settingsBtn").addEventListener("click", openSettings);
+$("#fab").addEventListener("click", ()=>{
+  if (uiView === "design") { toast("בחר חדר כדי להתחיל לעצב"); return; }
+  uiRoom ? addItemTo(uiRoom) : openAddSheet();
+});
+$("#settingsTab").addEventListener("click", openSettings);
 $("#scrim").addEventListener("click", closeSheet);
 $("#shClose").addEventListener("click", closeSheet);
 document.addEventListener("keydown", e=>{ if (e.key==="Escape") closeSheet(); });
