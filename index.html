@@ -165,6 +165,12 @@ input,select{ font:inherit; color:inherit; }
 .ah-btn{ width:40px; height:40px; border-radius:50%; display:grid; place-items:center;
   background: var(--card); box-shadow: var(--sh-sm); color: var(--ink-2); }
 .ah-btn:active{ transform: scale(.94); }
+.sync-dot{ width:9px; height:9px; border-radius:50%; flex:0 0 auto;
+  background: var(--ink-3, #9aa); box-shadow: 0 0 0 3px color-mix(in srgb, var(--card) 60%, transparent); transition: background .3s; }
+.sync-dot.on{ background: var(--d-done); }
+.sync-dot.wait{ background: var(--d-buy); animation: syncPulse 1s ease-in-out infinite; }
+.sync-dot.off{ background: var(--ink-3, #9aa); }
+@keyframes syncPulse{ 50%{ opacity:.35; } }
 .ah-title{ margin-top:12px; }
 .ah-title h1{ font-size:28px; font-weight:800; line-height:1.1; }
 .ah-title .sub{ font-size:13px; color:var(--muted); margin-top:3px; font-weight:500; }
@@ -461,6 +467,7 @@ body.designing .tabbar{ display:none; }
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
         <span id="hdDate">—</span>
       </span>
+      <span class="sync-dot off" id="syncDot" title="לא מחובר — נשמר במכשיר"></span>
       <button class="ah-btn" id="themeBtn" aria-label="החלפת מצב תצוגה">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
       </button>
@@ -568,9 +575,28 @@ body.designing .tabbar{ display:none; }
 
 <div class="toast" id="toast"></div>
 
+<!-- Firebase (compat build, classic globals). Loaded from Google's CDN.
+     If it fails to load (offline / blocked) the app still works fully from
+     localStorage — sync is best-effort. -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+
 <script>
 (function(){
 "use strict";
+
+/* ============================================================ SYNC CONFIG
+   Firebase Realtime Database, shared by the whole family. Rules are open
+   (no login) — one shared home, low change rate, a handful of devices.  */
+const FB_CONFIG = {
+  apiKey: "AIzaSyDfji3QsooaPKX40GfRRKP4troa_Byorqk",
+  authDomain: "new-home-18101.firebaseapp.com",
+  databaseURL: "https://new-home-18101-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "new-home-18101",
+  storageBucket: "new-home-18101.firebasestorage.app",
+  messagingSenderId: "251264596309",
+  appId: "1:251264596309:web:3cff602a95cfa2e85597dc"
+};
 
 /* ============================================================
    ROOMS — default set (names only; editable and deletable)
@@ -751,8 +777,56 @@ function normalize(s){
   return out;
 }
 let saveTimer;
-function save(){ clearTimeout(saveTimer); saveTimer = setTimeout(()=>{ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }, 200); }
+function save(){ clearTimeout(saveTimer); saveTimer = setTimeout(()=>{ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} SYNC.push(); }, 200); }
 function commit(){ save(); renderAll(); }
+
+/* ============================================================ SYNC
+   One shared JSON blob in Firebase Realtime Database. Last write wins.
+   Offline-first: the app runs on localStorage; the cloud is a mirror the
+   whole family shares. No login — see FB_CONFIG note above.               */
+const SYNC = (function(){
+  const DEVICE = (()=>{ try{ let d=localStorage.getItem("newhome.device");
+    if(!d){ d=Math.random().toString(36).slice(2,10); localStorage.setItem("newhome.device",d); }
+    return d; }catch(e){ return "anon"; } })();
+  let sref=null, ready=false, applying=false, gotFirst=false, mine=0, pushTimer=null;
+
+  function setDot(cls){ const d=$("#syncDot"); if(!d) return;
+    d.className = "sync-dot " + cls;
+    d.title = cls==="on" ? "מסונכרן" : cls==="wait" ? "מתחבר…" : "לא מחובר — נשמר במכשיר";
+  }
+  function start(onRemote){
+    if (typeof firebase === "undefined"){ setDot("off"); return; }   /* SDK blocked/offline */
+    setDot("wait");
+    try{
+      firebase.initializeApp(FB_CONFIG);
+      sref = firebase.database().ref("state");
+      sref.on("value", snap=>{
+        const v = snap.val();
+        const first = !gotFirst; gotFirst = true;
+        if (!v || !v.data){ if (first) write(); setDot("on"); return; }  /* server empty → seed it */
+        setDot("on");
+        if (v.by===DEVICE && +v.at===mine) return;                     /* our own echo */
+        applying = true;
+        try{ onRemote(v.data); } finally { applying = false; }
+      }, ()=> setDot("off"));
+      ready = true;
+    }catch(e){ setDot("off"); }
+  }
+  function write(){
+    if (!ready) return;
+    mine = Date.now();
+    sref.set({ data: state, at: mine, by: DEVICE })
+        .then(()=> setDot("on")).catch(()=> setDot("off"));
+  }
+  /* Called after every local save. Ignored until the first server snapshot
+     has arrived, so a fresh device never clobbers the family's data. */
+  function push(){
+    if (!ready || applying || !gotFirst) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(write, 350);
+  }
+  return { start, push, connected:()=> ready };
+})();
 
 /* ---- derived ---- */
 const moveInDate = ()=>{ const d = new Date(state.moveIn+"T00:00:00"); return isNaN(d) ? null : d; };
@@ -1088,12 +1162,13 @@ function openAddSheet(){
 /* ---- settings sheet ---- */
 function openSettings(){
   uiRoom = null;
-  setHead(`<h3>הגדרות</h3><div class="meta">הנתונים נשמרים במכשיר הזה בלבד</div>`);
+  const syncTxt = SYNC.connected() ? "מסונכרן בין המכשירים של המשפחה" : "נשמר במכשיר (אין חיבור כרגע)";
+  setHead(`<h3>הגדרות</h3><div class="meta">${syncTxt}</div>`);
   $("#shExtra").innerHTML = "";
   $("#shBody").innerHTML = `
     <div class="settings-row"><span class="lbl">תאריך כניסה</span><input type="date" id="stMove" value="${state.moveIn}"></div>
     <div class="settings-row"><span class="lbl">תקציב כולל</span><input type="number" id="stBudget" min="0" step="1000" value="${state.budget}"></div>
-    <p class="lede" style="margin:18px 0 10px">גיבוי שומר קובץ שאפשר לייבא בחזרה אם תחליף מכשיר או תנקה את הדפדפן.</p>
+    <p class="lede" style="margin:18px 0 10px">הנתונים מסתנכרנים אוטומטית בין כל המכשירים של המשפחה דרך הענן. גיבוי לקובץ הוא רשת ביטחון נוספת.</p>
     <div style="display:flex;gap:9px;flex-wrap:wrap">
       <button class="btn ghost sm" id="stExport">גיבוי לקובץ</button>
       <button class="btn ghost sm" id="stImport">ייבוא מגיבוי</button>
@@ -2043,7 +2118,12 @@ try{ const th = localStorage.getItem(THEME_KEY); if (th) root.setAttribute("data
 
 state = normalize(load());
 renderAll();
-save();
+try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+SYNC.start(function(remoteData){
+  state = normalize(remoteData);
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+  renderAll();
+});
 })();
 </script>
 </body>
