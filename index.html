@@ -376,6 +376,24 @@ body.designing .tabbar{ display:none; }
 .dz-top .sz{ font-size:11.5px; color:var(--muted); font-weight:600; font-variant-numeric:tabular-nums; }
 .dz-ico{ width:38px; height:38px; border-radius:50%; background: var(--card-2); display:grid; place-items:center; flex:none; color:var(--ink-2); }
 .dz-ico:active{ transform:scale(.94); }
+.dz-ico.accent{ background: var(--brand); color: var(--brand-ink); }
+
+/* ---- stand-inside 3D view ---- */
+.d3{
+  position:fixed; inset:0; z-index:48; display:none; flex-direction:column;
+  background: var(--app); max-width: var(--appw); margin:0 auto;
+  -webkit-user-select:none; user-select:none;
+}
+body.viewing3d .d3{ display:flex; }
+body.viewing3d .tabbar{ display:none; }
+.d3-stage{ flex:1; min-height:0; position:relative; margin:10px 14px; border-radius:var(--r-card);
+  overflow:hidden; box-shadow: var(--sh); background:#DCE7EF; touch-action:none; }
+.d3-stage > canvas{ display:block; width:100%; height:100%; }
+.d3-hint{ position:absolute; inset-inline:0; bottom:12px; text-align:center; pointer-events:none;
+  font-size:12px; font-weight:700; color:#3F4E59; transition:opacity .45s; }
+.d3-hint.gone{ opacity:0; }
+.d3-foot{ flex:none; padding: 0 14px calc(12px + env(safe-area-inset-bottom));
+  display:flex; gap:7px; align-items:center; flex-wrap:wrap; }
 
 .dz-vars{ display:flex; gap:6px; padding:9px 14px 0; flex:none; align-items:center; }
 .dz-vars button{ border-radius:var(--r-pill); padding:6px 13px; font-size:12.5px; font-weight:700;
@@ -543,6 +561,9 @@ body.designing .tabbar{ display:none; }
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
     </button>
     <div class="t"><h3 id="dzName">—</h3><div class="sz" id="dzSize"></div></div>
+    <button class="dz-ico accent" id="dz3d" aria-label="צפייה בתלת־ממד">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 20.5 7v10L12 21.5 3.5 17V7Z"/><path d="M12 12 20.5 7M12 12v9.5M12 12 3.5 7"/></svg>
+    </button>
     <button class="dz-ico" id="dzFit" aria-label="התאמה למסך">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
     </button>
@@ -557,6 +578,24 @@ body.designing .tabbar{ display:none; }
   </div>
   <div class="dz-sel" id="dzSel" hidden></div>
   <div class="dz-tools" id="dzTools"></div>
+</div>
+
+<!-- Stand-inside 3D view of the current plan -->
+<div class="d3" id="d3">
+  <div class="dz-top">
+    <button class="dz-ico" id="d3Back" aria-label="חזרה לשרטוט">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
+    <div class="t"><h3 id="d3Name">—</h3><div class="sz" id="d3Sub"></div></div>
+    <button class="dz-ico" id="d3Reset" aria-label="איפוס המבט">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+    </button>
+  </div>
+  <div class="d3-stage" id="d3Stage">
+    <canvas id="d3Canvas"></canvas>
+    <div class="d3-hint" id="d3Hint">גרור כדי להסתכל מסביב</div>
+  </div>
+  <div class="d3-foot" id="d3Foot"></div>
 </div>
 
 <div class="scrim" id="scrim"></div>
@@ -769,6 +808,7 @@ function normalize(s){
         w: Math.max(5,+f.w||60), d: Math.max(5,+f.d||60),
         shape: (f.shape==="circle"||f.shape==="corner") ? f.shape : "rect",
         under: !!f.under,
+        h: (f.h==null || !(+f.h>0)) ? null : Math.max(1, +f.h),   /* 3D height; null = use the catalogue default */
         x: +f.x||0, y: +f.y||0, rot: ((+f.rot||0)%360+360)%360
       }))
     }));
@@ -1406,6 +1446,48 @@ const CATALOG = [
              ["פסנתר",150,60],["כספת",50,50]]]
 ];
 
+/* Standing height in cm — the plan stores only a footprint, so the 3D view
+   needs one more number per piece. A pair [height, base] lifts a piece off
+   the floor (a wall unit, a mirror). Every piece can override this in its
+   own edit sheet; these are ordinary Israeli-market sizes, not gospel. */
+const HEIGHTS = {
+  "מיטה זוגית":50, "מיטה זוגית 140":50, "מיטת יחיד":50, "מיטת יחיד וחצי":50,
+  "מיטת קומותיים":165, "מיטה נפתחת":50, "מיטת תינוק":95, "שידת החתלה":95, "שידת לילה":50,
+  "ארון 2 דלתות":240, "ארון 3 דלתות":240, "ארון 4 דלתות":240, "ארון 5 דלתות":240,
+  "ארון הזזה":240, "ארון פינתי":240, "ארון נעליים":100, "שידה":80, "כוננית":180,
+  "ספרייה":200, "ארון שירות":200,
+  "ספה תלת":85, "ספה דו":85, "ספה פינתית ר":85, "ספת ר גדולה":85, "שזלונג":85,
+  "כורסה":90, "פוף":40, "שולחן סלון":40, "שולחן צד":55, "מזנון טלוויזיה":50,
+  "שטיח":2, "שטיח עגול":2,
+  "שולחן אוכל 6":75, "שולחן אוכל 8":75, "שולחן עגול":75, "כיסא":90, "ספסל אוכל":45, "ויטרינה":190,
+  "שולחן טואלטיקה":78, "כיסא טואלטיקה":85, "ספסל קצה מיטה":45, "מראה עומדת":160,
+  "מקרר":185, "מקרר אמריקאי":180, "תנור":85, "כיריים":90, "מדיח כלים":85,
+  "מכונת כביסה":85, "מייבש":85, "אי מטבח":90, "ארון מטבח":90, "מיקרוגל":[30,90],
+  "שולחן כתיבה":75, "שולחן כתיבה גדול":75, "כיסא משרדי":95, "ארון תיוק":120,
+  "אמבטיה":55, "מקלחון":200, "מקלחון קטן":200, "אסלה":75, "ארון אמבטיה":85,
+  "ספת חוץ":80, "ספת חוץ פינתית":80, "כורסת חוץ":80, "שולחן חוץ":75,
+  "שולחן מרפסת קטן":72, "כיסא חוץ":85, "נדנדה תלויה":190, "גריל":110,
+  "ארגז אחסון חוץ":60, "עציץ גדול":70, "מתלה כביסה":110, "שמשייה":250, "שטיח חוץ":2,
+  "מזגן עילי":[30,215], "מיטת טיפולים":70, "מראה":[120,90], "עמוד תאורה":160,
+  "פסנתר":120, "כספת":60
+};
+/* fallback for renamed or custom pieces — first match wins */
+const H_GUESS = [
+  [/שטיח/,2], [/ארון|ויטרינה|ספרי|כוננית|מקלחון/,200], [/מקרר/,185],
+  [/מיטה|מיטת|מזרן/,50], [/ספה|ספת|שזלונג/,85], [/כורסה|כיסא|כסא/,90],
+  [/שולחן/,75], [/שידה/,80], [/מכונת|מייבש|תנור|מדיח/,85]
+];
+function catH(name){
+  const v = HEIGHTS[name];
+  if (v!=null) return Array.isArray(v) ? v[0] : v;
+  for (const [re,h] of H_GUESS) if (re.test(name)) return h;
+  return 75;
+}
+function catBase(name){ const v=HEIGHTS[name]; return Array.isArray(v) ? v[1] : 0; }
+/* the height actually used: the piece's own value if it has one */
+function pieceH(it){ return it.h!=null ? it.h : catH(it.name); }
+function pieceBase(it){ return it.under ? 0 : catBase(it.name); }
+
 /* ============================================================ DESIGNER STATE */
 let dz = { room:null, vi:0, sel:null, selOp:null, vb:null, warns:null, showWarns:false, tool:"move", measure:null };
 const dzPlan = ()=> state.plans[dz.room];
@@ -1732,11 +1814,14 @@ function editPiece(it){
       <div class="fld"><label for="pw">רוחב (ס״מ)</label><input type="number" id="pw" min="5" value="${it.w}"></div>
       <div class="fld"><label for="pd">עומק (ס״מ)</label><input type="number" id="pd" min="5" value="${it.d}"></div>
     </div>
+    <div class="fld" style="margin-top:12px"><label for="ph">גובה (ס״מ) — לתצוגת התלת־ממד</label>
+      <input type="number" id="ph" min="1" max="400" value="${pieceH(it)}"></div>
     <button class="btn block" id="pSave" style="margin-top:18px">שמירה</button>`;
   $("#pSave").addEventListener("click", ()=>{
     it.name = $("#pn").value.trim() || it.name;
     it.w = Math.max(5, +$("#pw").value||it.w);
     it.d = Math.max(5, +$("#pd").value||it.d);
+    it.h = clamp(+$("#ph").value || pieceH(it), 1, 400);
     save(); closeSheet(); renderDesigner();
   });
   openSheet();
@@ -2055,6 +2140,405 @@ function openDzMenu(){
   });
   openSheet();
 }
+
+/* ============================================================ 3D VIEW
+   You stand inside the plan you drew and look around. A painter's-algorithm
+   renderer on a plain 2D canvas: every surface is a flat quad measured in
+   centimetres, so nothing here is a stylistic approximation — the geometry
+   IS the plan. No library, so it works offline like the rest of the planner.
+   Big surfaces are chopped into ~50cm chunks because painter's sorting is
+   per-face: one huge wall quad would wrongly cover furniture standing in
+   front of its far end. */
+const CEIL_H = 260;              /* ceiling, cm */
+const EYE_H  = 170;              /* eye height, cm */
+const DOOR_H = 200;              /* door head, cm */
+const WIN_B  = 90, WIN_T = 210;  /* window sill and head, cm */
+const CHUNK  = 50;               /* subdivision for depth sorting, cm */
+const NEARZ  = 8;                /* near clip plane, cm */
+const FOV_Y  = 68*Math.PI/180;   /* vertical field of view */
+const LIGHT  = (()=>{ const v=[0.36,0.88,-0.30], L=Math.hypot(...v); return v.map(c=>c/L); })();
+const SKY    = "#DCE7EF";        /* what you see through a door or window */
+/* [r, g, b, ambient]. Ambient is how much light a surface keeps when it faces
+   away from the key light: the shell stays bright and even so the room reads
+   as a white model, while furniture takes strong shading so it reads as solid. */
+const TONE = {
+  wall:[240,240,237,0.82], floor:[214,211,205,0.80], ceil:[250,250,248,0.94],
+  side:[193,191,186,0.66], top:[214,212,207,0.62],   rug:[199,196,191,0.85]
+};
+
+let scene = { yaw:0, pitch:0, cam:null, geo:null, dpr:1, foot:"" };
+
+function centroid(p){
+  let x=0,y=0,z=0; for (const q of p){ x+=q[0]; y+=q[1]; z+=q[2]; }
+  return [x/p.length, y/p.length, z/p.length];
+}
+/* Newell's method — works for any planar polygon, convex or not */
+function faceNormal(p){
+  let nx=0, ny=0, nz=0;
+  for (let i=0;i<p.length;i++){
+    const a=p[i], b=p[(i+1)%p.length];
+    nx += (a[1]-b[1])*(a[2]+b[2]);
+    ny += (a[2]-b[2])*(a[0]+b[0]);
+    nz += (a[0]-b[0])*(a[1]+b[1]);
+  }
+  const L = Math.hypot(nx,ny,nz) || 1;
+  return [nx/L, ny/L, nz/L];
+}
+/* Sutherland–Hodgman against the near plane, in view space */
+function clipNear(pts){
+  const out=[];
+  for (let i=0;i<pts.length;i++){
+    const A=pts[i], B=pts[(i+1)%pts.length];
+    const ain = A[2]>=NEARZ, bin = B[2]>=NEARZ;
+    if (ain) out.push(A);
+    if (ain!==bin){
+      const t = (NEARZ-A[2])/(B[2]-A[2]);
+      out.push([A[0]+(B[0]-A[0])*t, A[1]+(B[1]-A[1])*t, NEARZ]);
+    }
+  }
+  return out;
+}
+/* axis-aligned rect minus rect — up to four pieces. Used to punch the
+   corner notches out of the floor and ceiling tiling. */
+function rectMinus(r,k){
+  const x0=Math.max(r.x0,k.x0), y0=Math.max(r.y0,k.y0),
+        x1=Math.min(r.x1,k.x1), y1=Math.min(r.y1,k.y1);
+  if (x0>=x1 || y0>=y1) return [r];
+  const out=[];
+  if (r.y0 < y0) out.push({x0:r.x0, y0:r.y0, x1:r.x1, y1:y0});
+  if (y1 < r.y1) out.push({x0:r.x0, y0:y1,   x1:r.x1, y1:r.y1});
+  if (r.x0 < x0) out.push({x0:r.x0, y0:y0,   x1:x0,   y1:y1});
+  if (x1 < r.x1) out.push({x0:x1,   y0:y0,   x1:r.x1, y1:y1});
+  return out;
+}
+function notchRects(v){
+  return (v.notches||[]).map(n=>
+    n.c==="tl" ? {x0:0,       y0:0,       x1:n.w,     y1:n.h} :
+    n.c==="tr" ? {x0:v.w-n.w, y0:0,       x1:v.w,     y1:n.h} :
+    n.c==="br" ? {x0:v.w-n.w, y0:v.h-n.h, x1:v.w,     y1:v.h} :
+                 {x0:0,       y0:v.h-n.h, x1:n.w,     y1:v.h});
+}
+
+/* distance from a point to a polygon's edges (its sign is not considered) */
+function edgeDist(x,y,poly){
+  let best=Infinity;
+  for (let i=0;i<poly.length;i++){
+    const a=poly[i], b=poly[(i+1)%poly.length];
+    const vx=b[0]-a[0], vy=b[1]-a[1], L2=vx*vx+vy*vy || 1;
+    const t=clamp(((x-a[0])*vx + (y-a[1])*vy)/L2, 0, 1);
+    best=Math.min(best, Math.hypot(x-(a[0]+vx*t), y-(a[1]+vy*t)));
+  }
+  return best;
+}
+/* Where you stand. Not simply the middle of the room — the middle is often
+   inside the sofa. We look for the spot with the most elbow room from both
+   furniture and walls, nudged back toward the centre so the view stays
+   representative rather than wedged into whichever corner happens to be
+   emptiest. */
+function camSpot(v){
+  const P = roomPoly(v);
+  const boxes=[];
+  for (const it of v.items) if (!it.under)
+    for (const lr of localRects(it)) boxes.push(rectWorld(it,lr));
+  const cx=v.w/2, cy=v.h/2;
+  let best=null, bs=-Infinity;
+  for (let y=10; y<v.h; y+=10) for (let x=10; x<v.w; x+=10){
+    if (!pointInPoly(x,y,P)) continue;
+    let clear = edgeDist(x,y,P);                      /* keep off the walls too */
+    for (const q of boxes){
+      if (pointInPoly(x,y,q)){ clear=-1; break; }
+      clear = Math.min(clear, edgeDist(x,y,q));
+      if (clear<=0) break;
+    }
+    if (clear<=0) continue;
+    const score = Math.min(clear,140) - 0.12*Math.hypot(x-cx,y-cy);
+    if (score>bs){ bs=score; best=[x,y]; }
+  }
+  return best || [cx,cy];
+}
+
+function build3D(v){
+  const faces=[], labels=[];
+  /* `ref` orients a face's normal outward from the solid it belongs to;
+     `two` marks the room shell, which is always seen from the inside. */
+  const add=(p, tone, edge, ref, two)=>{
+    const c=centroid(p);
+    let n=faceNormal(p);
+    if (ref && (n[0]*(c[0]-ref[0]) + n[1]*(c[1]-ref[1]) + n[2]*(c[2]-ref[2])) < 0) n=[-n[0],-n[1],-n[2]];
+    faces.push({ p, c, n, tone, edge:edge||0, two:!!two });
+  };
+
+  /* ---- floor and ceiling, tiled so depth sorting stays honest ---- */
+  const notches = notchRects(v);
+  for (let y=0; y<v.h; y+=CHUNK) for (let x=0; x<v.w; x+=CHUNK){
+    let rects=[{ x0:x, y0:y, x1:Math.min(x+CHUNK,v.w), y1:Math.min(y+CHUNK,v.h) }];
+    for (const k of notches){ const nx=[]; for (const r of rects) nx.push(...rectMinus(r,k)); rects=nx; }
+    for (const r of rects){
+      const q=[[r.x0,r.y0],[r.x1,r.y0],[r.x1,r.y1],[r.x0,r.y1]];
+      add(q.map(([a,b])=>[a,0,b]),      TONE.floor, 1, null, true);
+      add(q.map(([a,b])=>[a,CEIL_H,b]), TONE.ceil,  0, null, true);
+    }
+  }
+
+  /* ---- walls, with real holes where the doors and windows are ---- */
+  const P = roomPoly(v);
+  for (let i=0;i<P.length;i++){
+    const A=P[i], B=P[(i+1)%P.length];
+    const ex=B[0]-A[0], ey=B[1]-A[1], L=Math.hypot(ex,ey);
+    if (L<1) continue;
+    const ux=ex/L, uy=ey/L;
+
+    /* openings sitting on this edge, as [from, to, sill, head] along it */
+    const cuts=[];
+    for (const o of (v.openings||[])){
+      const s=wallSeg(v,o); if (!s) continue;
+      const [ax,ay,bx,by]=s;
+      /* both ends must lie on this edge's line, or it belongs to another wall */
+      if (Math.abs((ax-A[0])*uy-(ay-A[1])*ux) > 1) continue;
+      if (Math.abs((bx-A[0])*uy-(by-A[1])*ux) > 1) continue;
+      let t0=(ax-A[0])*ux+(ay-A[1])*uy, t1=(bx-A[0])*ux+(by-A[1])*uy;
+      if (t0>t1){ const q=t0; t0=t1; t1=q; }
+      t0=Math.max(0,t0); t1=Math.min(L,t1);
+      if (t1-t0 < 5) continue;
+      cuts.push(o.type==="window" ? [t0,t1,WIN_B,WIN_T] : [t0,t1,0,DOOR_H]);
+    }
+    cuts.sort((a,b)=>a[0]-b[0]);
+
+    /* solid runs between openings, plus the strips under and over each one */
+    const panels=[]; let t=0;
+    for (const [t0,t1,sill,head] of cuts){
+      if (t0>t) panels.push([t,t0,0,CEIL_H]);
+      if (sill>0)      panels.push([t0,t1,0,sill]);
+      if (head<CEIL_H) panels.push([t0,t1,head,CEIL_H]);
+      t=Math.max(t,t1);
+    }
+    if (t<L) panels.push([t,L,0,CEIL_H]);
+
+    for (const [p0,p1,y0,y1] of panels){
+      const n=Math.max(1, Math.ceil((p1-p0)/CHUNK));
+      for (let k=0;k<n;k++){
+        const a=p0+(p1-p0)*k/n, b=p0+(p1-p0)*(k+1)/n;
+        const X0=A[0]+ux*a, Z0=A[1]+uy*a, X1=A[0]+ux*b, Z1=A[1]+uy*b;
+        add([[X0,y0,Z0],[X1,y0,Z1],[X1,y1,Z1],[X0,y1,Z0]], TONE.wall, 0, null, true);
+      }
+    }
+  }
+
+  /* ---- furniture ---- */
+  for (const it of v.items){
+    const h=pieceH(it), zb=pieceBase(it);
+    if (it.under){                                   /* a rug is a floor layer */
+      for (const lr of localRects(it))
+        add(rectWorld(it,lr).map(([x,y])=>[x,0.8,y]), TONE.rug, 1, null, true);
+      continue;
+    }
+    const ref=[it.x, zb+h/2, it.y];
+    if (it.shape==="circle"){
+      const N=16, r1=it.w/2, r2=it.d/2, a0=(it.rot||0)*Math.PI/180;
+      const ca=Math.cos(a0), sa=Math.sin(a0);
+      const ring=k=>{ const t=k/N*2*Math.PI, lx=Math.cos(t)*r1, ly=Math.sin(t)*r2;
+                      return [ it.x+lx*ca-ly*sa, it.y+lx*sa+ly*ca ]; };
+      const cap=[];
+      for (let k=0;k<N;k++){
+        const a=ring(k), b=ring(k+1);
+        add([[a[0],zb,a[1]],[b[0],zb,b[1]],[b[0],zb+h,b[1]],[a[0],zb+h,a[1]]], TONE.side, 0, ref);
+        cap.push([a[0],zb+h,a[1]]);
+      }
+      add(cap, TONE.top, 2, ref);
+    } else {
+      const a0=(it.rot||0)*Math.PI/180, ca=Math.cos(a0), sa=Math.sin(a0);
+      for (const lr of localRects(it)){             /* two rects for an L-shape */
+        const C=rectWorld(it,lr);
+        /* each sub-box orients its faces from its OWN centre — the piece centre
+           sits outside the second leg of an L and would flip its normals */
+        const bref=[ it.x + lr.cx*ca - lr.cy*sa, zb+h/2, it.y + lr.cx*sa + lr.cy*ca ];
+        for (let k=0;k<4;k++){
+          const a=C[k], b=C[(k+1)%4];
+          add([[a[0],zb,a[1]],[b[0],zb,b[1]],[b[0],zb+h,b[1]],[a[0],zb+h,a[1]]], TONE.side, 2, bref);
+        }
+        add(C.map(([x,y])=>[x,zb+h,y]), TONE.top, 2, bref);
+        if (zb>0) add(C.map(([x,y])=>[x,zb,y]), TONE.side, 2, bref);   /* wall-hung: it has an underside */
+      }
+    }
+    labels.push({ p:[it.x, zb+h+14, it.y], t:it.name });
+  }
+
+  const [cx,cy] = camSpot(v);
+  /* Aim across the room rather than into the nearest corner: from an
+     off-centre spot the middle of the room is what you want to be looking
+     at. Standing dead centre there is no such direction, so fall back to
+     facing away from the door — the view you get walking in. */
+  let yaw0 = 0;
+  const tx=v.w/2-cx, ty=v.h/2-cy;
+  if (Math.hypot(tx,ty) > 40) yaw0 = Math.atan2(tx,ty);
+  else {
+    const door = (v.openings||[]).find(o=>o.type==="door");
+    if (door){
+      const s=wallSeg(v,door);
+      const dx=cx-(s[0]+s[2])/2, dy=cy-(s[1]+s[3])/2;
+      if (Math.hypot(dx,dy)>1) yaw0 = Math.atan2(dx,dy);
+    }
+  }
+  /* Tilted a little down. At eye level a 260cm room is mostly blank wall —
+     you tip your head down to take in the furniture, so the view starts there. */
+  return { faces, labels, cam:[cx, EYE_H, cy], yaw0, pitch0:-0.28 };
+}
+
+function size3D(){
+  const cv=$("#d3Canvas"), st=$("#d3Stage");
+  const r=st.getBoundingClientRect();
+  if (!r.width || !r.height) return false;
+  scene.dpr = Math.min(window.devicePixelRatio||1, 2);
+  cv.width  = Math.round(r.width  * scene.dpr);
+  cv.height = Math.round(r.height * scene.dpr);
+  return true;
+}
+
+function draw3D(){
+  const cv=$("#d3Canvas");
+  if (!cv || !scene.geo || !cv.width) return;
+  const ctx=cv.getContext("2d"), W=cv.width, H=cv.height, dpr=scene.dpr;
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle = SKY; ctx.fillRect(0,0,W,H);
+
+  const cam=scene.cam;
+  const cy=Math.cos(scene.yaw), sy=Math.sin(scene.yaw);
+  const cp=Math.cos(scene.pitch), sp=Math.sin(scene.pitch);
+  const f=(H/2)/Math.tan(FOV_Y/2);
+  /* forward is (sin yaw, 0, cos yaw): yaw 0 looks down the plan, +yaw turns
+     toward plan +x. Pitch then tilts that basis up. */
+  const view = p=>{
+    const dx=p[0]-cam[0], dy=p[1]-cam[1], dz=p[2]-cam[2];
+    const xc = dx*cy - dz*sy, zf = dx*sy + dz*cy;
+    return [ xc, dy*cp - zf*sp, zf*cp + dy*sp ];
+  };
+
+  const draw=[];
+  for (const F of scene.geo.faces){
+    let n=F.n;
+    const facing = n[0]*(cam[0]-F.c[0]) + n[1]*(cam[1]-F.c[1]) + n[2]*(cam[2]-F.c[2]);
+    if (F.two){ if (facing<0) n=[-n[0],-n[1],-n[2]]; }   /* shell: seen from inside */
+    else if (facing<=0) continue;                        /* solid: cull the back */
+    const vp = clipNear(F.p.map(view));
+    if (vp.length<3) continue;
+    let z=0; for (const q of vp) z+=q[2];
+    draw.push({ F, n, vp, z:z/vp.length });
+  }
+  draw.sort((a,b)=> b.z-a.z);                            /* far to near */
+
+  ctx.lineJoin = "round";
+  for (const o of draw){
+    const [r,g,b,amb] = o.F.tone;
+    const key = Math.max(0, o.n[0]*LIGHT[0] + o.n[1]*LIGHT[1] + o.n[2]*LIGHT[2]);
+    const s = amb + (1-amb)*key;
+    ctx.beginPath();
+    for (let i=0;i<o.vp.length;i++){
+      const q=o.vp[i];
+      const X = W/2 + f*q[0]/q[2], Y = H/2 - f*q[1]/q[2];
+      i ? ctx.lineTo(X,Y) : ctx.moveTo(X,Y);
+    }
+    ctx.closePath();
+    const fill = `rgb(${Math.round(r*s)},${Math.round(g*s)},${Math.round(b*s)})`;
+    ctx.fillStyle = fill;
+    ctx.fill();
+    /* Adjacent chunks of one surface are separate polygons, and antialiasing
+       leaves a hairline between them. Outlining each in its own colour welds
+       them back into a continuous wall or floor. */
+    ctx.strokeStyle = fill; ctx.lineWidth = dpr; ctx.stroke();
+    if (o.F.edge){
+      ctx.strokeStyle = o.F.edge===2 ? "rgba(34,40,44,.30)" : "rgba(34,40,44,.10)";
+      ctx.lineWidth = dpr*0.9;
+      ctx.stroke();
+    }
+  }
+
+  /* names, nearest first so the closest piece wins a contested spot */
+  const tags=[];
+  for (const lb of scene.geo.labels){
+    const q=view(lb.p);
+    if (q[2]<NEARZ) continue;
+    tags.push({ t:lb.t, x: W/2 + f*q[0]/q[2], y: H/2 - f*q[1]/q[2], z:q[2] });
+  }
+  tags.sort((a,b)=> a.z-b.z);
+  ctx.font = `700 ${Math.round(11.5*dpr)}px Rubik, system-ui, sans-serif`;
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  const taken=[];
+  for (const t of tags){
+    const pw = ctx.measureText(t.t).width + 15*dpr, ph = 20*dpr;
+    const box = { x0:t.x-pw/2, y0:t.y-ph/2, x1:t.x+pw/2, y1:t.y+ph/2 };
+    if (box.x1<0 || box.x0>W || box.y1<0 || box.y0>H) continue;
+    if (taken.some(k=> k.x0<box.x1 && box.x0<k.x1 && k.y0<box.y1 && box.y0<k.y1)) continue;
+    taken.push(box);
+    ctx.fillStyle = "rgba(22,28,26,.74)";
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(box.x0, box.y0, pw, ph, 7*dpr);
+    else ctx.rect(box.x0, box.y0, pw, ph);
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.fillText(t.t, t.x, t.y + dpr*0.5);
+  }
+}
+
+/* which wall you're currently facing */
+function foot3D(){
+  const v=dzVar(); if (!v) return;
+  const fx=Math.sin(scene.yaw), fz=Math.cos(scene.yaw);
+  const wall = Math.abs(fx)>Math.abs(fz)
+    ? (fx>0 ? "קיר ימין" : "קיר שמאל")
+    : (fz>0 ? "קיר תחתון" : "קיר עליון");
+  const txt = `<span class="chipn">פונה ל${wall}</span>
+    <span class="chipn n" dir="ltr">${v.w}×${v.h} ס״מ</span>
+    <span class="chipn n" dir="ltr">תקרה ${CEIL_H}</span>
+    <span class="chipn n" dir="ltr">גובה עיניים ${EYE_H}</span>`;
+  if (txt!==scene.foot){ scene.foot=txt; $("#d3Foot").innerHTML=txt; }
+}
+
+function open3D(){
+  const v=dzVar(); if (!v) return;
+  scene.geo   = build3D(v);
+  scene.cam   = scene.geo.cam;
+  scene.yaw   = scene.geo.yaw0;
+  scene.pitch = scene.geo.pitch0;
+  scene.foot  = "";
+  $("#d3Name").textContent = roomName(dz.room);
+  $("#d3Sub").textContent  = `${v.name} · ${v.items.length} רהיטים`;
+  $("#d3Hint").classList.remove("gone");
+  document.body.classList.add("viewing3d");
+  requestAnimationFrame(()=>{ if (size3D()) draw3D(); foot3D(); });
+}
+function close3D(){ document.body.classList.remove("viewing3d"); scene.geo=null; }
+
+/* ---- 3D wiring ---- */
+$("#dz3d").addEventListener("click", open3D);
+$("#d3Back").addEventListener("click", close3D);
+$("#d3Reset").addEventListener("click", ()=>{
+  if (!scene.geo) return;
+  scene.yaw = scene.geo.yaw0; scene.pitch = scene.geo.pitch0; draw3D(); foot3D();
+});
+(function(){
+  const st=$("#d3Stage");
+  let from=null;
+  st.addEventListener("pointerdown", e=>{
+    from={ x:e.clientX, y:e.clientY };
+    try{ st.setPointerCapture(e.pointerId); }catch(err){}
+    $("#d3Hint").classList.add("gone");
+  });
+  st.addEventListener("pointermove", e=>{
+    if (!from) return;
+    const dx=e.clientX-from.x, dy=e.clientY-from.y;
+    from={ x:e.clientX, y:e.clientY };
+    /* drag the world, the way a photo sphere behaves */
+    scene.yaw  -= dx*0.0052;
+    scene.pitch = clamp(scene.pitch + dy*0.0052, -1.05, 1.05);
+    draw3D();
+  });
+  const end=()=>{ if (from){ from=null; foot3D(); } };
+  st.addEventListener("pointerup", end);
+  st.addEventListener("pointercancel", end);
+  window.addEventListener("resize", ()=>{
+    if (document.body.classList.contains("viewing3d") && size3D()) draw3D();
+  });
+})();
 
 /* ---- designer wiring ---- */
 $("#dzBack").addEventListener("click", closeDesigner);
