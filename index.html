@@ -402,6 +402,12 @@ body.designing .tabbar{ display:none; }
 .fitem text{ fill: var(--ink); font-weight:700; text-anchor:middle; pointer-events:none; }
 .fitem .fdim{ fill: var(--muted); font-weight:600; direction:ltr; }
 .guide{ stroke: var(--coral); stroke-width:1.5; stroke-dasharray:6 5; }
+.mline{ stroke: var(--d-home); stroke-width:2.5; }
+.mpt{ cursor:grab; }
+.mpt-hit{ fill: transparent; pointer-events: fill; }
+.mpt-dot{ fill: var(--card); stroke: var(--d-home); stroke-width:3; }
+.mbadge{ fill: var(--d-home); }
+.mtxt{ fill:#fff; font-weight:800; text-anchor:middle; direction:ltr; }
 .gapline{ stroke: var(--ink-2); stroke-width:1.5; }
 .gaptxt{ fill: var(--ink); font-size:12px; font-weight:800; text-anchor:middle; direction:ltr;
   paint-order: stroke; stroke: var(--card); stroke-width:4px; }
@@ -486,6 +492,11 @@ body.designing .tabbar{ display:none; }
     <div class="card">
       <div class="card-h"><h3>לפי חדר</h3></div>
       <div id="roomRows"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>הוצאות כלליות</h3><span class="side" id="genSide"></span></div>
+      <p class="lede">עבודות, הובלה ושירותים שלא שייכים לחדר מסוים.</p>
+      <div id="genList"></div>
     </div>
   </section>
 
@@ -658,6 +669,12 @@ const clamp = (v,a,b)=> Math.max(a, Math.min(b, v));
 /* ============================================================ STATE */
 const KEY = "newhome.plan.v3";
 const THEME_KEY = "newhome.theme";
+const GEN = "__gen";   /* pseudo-room for expenses not tied to a room */
+const GEN_SEED = [
+  ["הובלה",2500,"buy"], ["צביעת הדירה",3000,"buy"], ["חשמלאי",1500,"buy"],
+  ["אינסטלטור",1000,"buy"], ["הרכבות והתקנות",2000,"buy"], ["וילונות ומסילות",1800,"buy"],
+  ["רשתות לחלונות",2500,"buy"], ["ניקיון סוף בנייה",800,"buy"], ["ביטוח דירה ותכולה",1200,"buy"]
+];
 let state, uiRoom = null, uiView = "rooms", roomFilter = "all";
 
 function defaultMoveIn(){ const d=new Date(); d.setMonth(d.getMonth()+9); return d.toISOString().slice(0,10); }
@@ -670,6 +687,8 @@ function seedState(){
   const roomBudgets = {};
   for (const r of rooms)
     roomBudgets[r.id] = Math.round(items.filter(i=>i.room===r.id).reduce((a,i)=>a+i.est,0)/500)*500;
+  for (const [name, est, st] of GEN_SEED)
+    items.push({ id:"i"+(++n), room:GEN, name, est, actual:null, status:st });
   return { v:3, moveIn: defaultMoveIn(), budget:150000, rooms, roomBudgets, items, plans:{}, seq:n };
 }
 function load(){
@@ -687,7 +706,8 @@ function normalize(s){
     : out.rooms;
   if (!rooms.length) rooms = out.rooms;
   const known = new Set(rooms.map(r=>r.id));
-  const orphaned = new Set((s.items||[]).map(i=>i&&i.room).filter(id=> id && !known.has(id)));
+  known.add(GEN);                                    /* general expenses aren't a room */
+  const orphaned = new Set((s.items||[]).map(i=>i&&i.room).filter(id=> id && id!==GEN && !known.has(id)));
   for (const id of orphaned){ rooms.push({ id, name:"חדר" }); known.add(id); }
   out.rooms = rooms;
 
@@ -884,12 +904,55 @@ function renderMoney(){
     </div>`;
   }).join("");
   $$("#roomRows .mrow").forEach(el=> el.addEventListener("click", ()=> openRoom(el.dataset.room)));
+
+  /* general expenses (not tied to a room) */
+  const gits = state.items.filter(i=>i.room===GEN), gt = totals(gits);
+  $("#genSide").textContent = gits.length ? money(gt.projected) : "";
+  const pill = i => `<span class="chipn" style="color:var(--${STATUS[i.status].v==="buy"?"d-buy":STATUS[i.status].v==="done"?"d-done":"d-home"})"><i style="background:var(--${STATUS[i.status].v==="buy"?"d-buy":STATUS[i.status].v==="done"?"d-done":"d-home"})"></i>${STATUS[i.status].short}</span>`;
+  $("#genList").innerHTML = (gits.length
+    ? gits.map(i=>`<div class="mrow" data-gitem="${i.id}"><div class="t"><div class="nm">${esc(i.name)}</div>
+        <div class="foot" style="margin-top:5px">${pill(i)}</div></div>
+        <div class="amt">${moneyN(projected(i))} ₪</div></div>`).join("")
+    : `<p class="empty" style="padding:14px">אין עדיין הוצאות כלליות.</p>`)
+    + `<button class="btn ghost block sm" id="genOpen" style="margin-top:12px">${gits.length?"עריכת ההוצאות":"הוספת הוצאות"}</button>`;
+  $("#genOpen").addEventListener("click", openGeneral);
+  $$("#genList [data-gitem]").forEach(el=> el.addEventListener("click", openGeneral));
+}
+
+/* ---- general expenses sheet ---- */
+let genOpen = false;
+function openGeneral(){
+  uiRoom = null; genOpen = true;
+  setHead(`<h3>הוצאות כלליות</h3><div class="meta">עבודות, הובלה ושירותים — לא שייך לחדר</div>`);
+  renderGeneralBody();
+  openSheet();
+}
+function renderGeneralBody(){
+  const gits = state.items.filter(i=>i.room===GEN), t = totals(gits);
+  $("#shExtra").innerHTML = `
+    <div class="sh-stats">
+      <div><div class="l">צפי הוצאה</div><div class="v">${money(t.projected)}</div></div>
+      <div><div class="l">שולם</div><div class="v" style="color:var(--d-done)">${money(t.paid)}</div></div>
+      <div><div class="l">לקנות</div><div class="v" style="color:var(--d-buy)">${money(t.planned)}</div></div>
+    </div>`;
+  $("#shBody").innerHTML =
+    (gits.length ? gits.map(itemHTML).join("") : `<p class="empty">אין עדיין הוצאות כלליות.</p>`) +
+    `<button class="btn ghost block" id="genAdd" style="margin-top:16px">הוספת הוצאה</button>`
+    + (!gits.length ? `<button class="btn ghost block" id="genSeed" style="margin-top:9px">הוסף הוצאות נפוצות</button>` : "");
+  $("#genAdd").addEventListener("click", ()=> addItemTo(GEN));
+  const gs = $("#genSeed");
+  if (gs) gs.addEventListener("click", ()=>{
+    for (const [name, est, st] of GEN_SEED){ state.seq=(state.seq||0)+1;
+      state.items.push({ id:"i"+state.seq+"_"+Date.now().toString(36), room:GEN, name, est, actual:null, status:st }); }
+    commit();
+  });
+  wireItems();
 }
 
 /* ============================================================ SHEET */
 const sheet = ()=> $("#sheet"), scrim = ()=> $("#scrim");
 function openSheet(){ sheet().classList.add("on"); scrim().classList.add("on"); }
-function closeSheet(){ sheet().classList.remove("on"); scrim().classList.remove("on"); uiRoom = null; $("#shExtra").innerHTML = ""; }
+function closeSheet(){ sheet().classList.remove("on"); scrim().classList.remove("on"); uiRoom = null; genOpen = false; $("#shExtra").innerHTML = ""; }
 function setHead(html){ $("#shT").innerHTML = html; }
 function openRoom(id){ uiRoom = id; renderRoom(); openSheet(); }
 
@@ -996,9 +1059,12 @@ function wireItems(){
 }
 function addItemTo(roomId){
   state.seq = (state.seq||0)+1;
-  const fresh = { id:"i"+state.seq+"_"+Date.now().toString(36), room:roomId, name:"פריט חדש", est:0, actual:null, status:"buy" };
+  const fresh = { id:"i"+state.seq+"_"+Date.now().toString(36), room:roomId,
+                  name: roomId===GEN ? "הוצאה חדשה" : "פריט חדש", est:0, actual:null, status:"buy" };
   state.items.push(fresh);
-  if (uiRoom !== roomId) openRoom(roomId); else commit();
+  if (roomId===GEN){ commit(); }
+  else if (uiRoom !== roomId){ openRoom(roomId); }
+  else { commit(); }
   setTimeout(()=>{ const rows = $$("#shBody .item"), last = rows[rows.length-1];
     if (last){ last.scrollIntoView({ block:"nearest" }); const n = $(".nm", last); n.focus(); n.select(); } }, 60);
 }
@@ -1266,7 +1332,7 @@ const CATALOG = [
 ];
 
 /* ============================================================ DESIGNER STATE */
-let dz = { room:null, vi:0, sel:null, selOp:null, vb:null, warns:null, showWarns:false };
+let dz = { room:null, vi:0, sel:null, selOp:null, vb:null, warns:null, showWarns:false, tool:"move", measure:null };
 const dzPlan = ()=> state.plans[dz.room];
 const dzVar  = ()=> { const p=dzPlan(); return p && p.variants[dz.vi]; };
 
@@ -1360,6 +1426,7 @@ let pendingNew = null;
 /* ---- the editor ---- */
 function openDesigner(){
   document.body.classList.add("designing");
+  dz.tool = "move"; dz.measure = null;
   dzFit(); renderDesigner();
 }
 function closeDesigner(){
@@ -1405,10 +1472,21 @@ function renderDesigner(){
   dz.warns = planWarnings(v);
   drawPlan();
   renderSelBar();
-  $("#dzTools").innerHTML = `<button class="btn" id="dzAdd">הוספת רהיט</button>
-    <button class="btn ghost" id="dzOpen">דלת / חלון</button>`;
-  $("#dzAdd").addEventListener("click", openCatalog);
-  $("#dzOpen").addEventListener("click", openOpenings);
+  const measuring = dz.tool==="measure";
+  $("#dzTools").innerHTML = measuring
+    ? `<button class="btn" id="dzMeasureDone">סיום מדידה</button>`
+    : `<button class="btn" id="dzAdd">הוספת רהיט</button>
+       <button class="btn ghost" id="dzOpen">דלת / חלון</button>
+       <button class="dz-ico" id="dzMeasure" aria-label="סרגל מדידה" style="width:46px;height:46px;border-radius:14px;box-shadow:var(--sh-sm)">
+         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12 12 2l10 10-10 10Z"/><path d="M7 7v3M12 5v4M17 12v3"/></svg>
+       </button>`;
+  if (measuring){
+    $("#dzMeasureDone").addEventListener("click", ()=>{ dz.tool="move"; dz.measure=null; renderDesigner(); });
+  } else {
+    $("#dzAdd").addEventListener("click", openCatalog);
+    $("#dzOpen").addEventListener("click", openOpenings);
+    $("#dzMeasure").addEventListener("click", startMeasure);
+  }
   renderWarnBox();
 }
 
@@ -1496,9 +1574,33 @@ function drawPlan(){
 
   svg.innerHTML = `<path class="floor" d="${polyPath(P)}"/>${grid}
     ${under}<path class="wall" d="${polyPath(P)}"/>${dims}${ops}${over}
-    <g id="dzGuides"></g>`;
+    <g id="dzGuides"></g>${measureSVG()}`;
   $$("#dzSvg .fitem").forEach(g=> g.addEventListener("pointerdown", onItemDown));
   $$("#dzSvg .op").forEach(g=> g.addEventListener("pointerdown", onOpDown));
+  $$("#dzSvg .mpt").forEach(g=> g.addEventListener("pointerdown", onMeasDown));
+}
+function startMeasure(){
+  const v = dzVar(); if (!v) return;
+  dz.tool = "measure"; dz.sel = null; dz.selOp = null;
+  dz.measure = { a:{ x:Math.round(v.w*0.3), y:Math.round(v.h*0.55) },
+                 b:{ x:Math.round(v.w*0.7), y:Math.round(v.h*0.55) } };
+  renderDesigner();
+}
+function measureSVG(){
+  if (dz.tool!=="measure" || !dz.measure) return "";
+  const {a,b} = dz.measure, vb = dz.vb;
+  const dist = Math.hypot(b.x-a.x, b.y-a.y);
+  const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+  const R = vb.w*0.022, hit = vb.w*0.06, fs = vb.w*0.034;
+  const dot = (p,id)=>`<g class="mpt" data-mp="${id}">
+    <circle class="mpt-hit" cx="${p.x}" cy="${p.y}" r="${hit}"/>
+    <circle class="mpt-dot" cx="${p.x}" cy="${p.y}" r="${R}"/></g>`;
+  return `<g class="mruler">
+    <line class="mline" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>
+    <rect class="mbadge" x="${mx-fs*1.7}" y="${my-fs*1.5}" width="${fs*3.4}" height="${fs*1.4}" rx="${fs*0.5}"/>
+    <text class="mtxt" x="${mx}" y="${my-fs*0.5}" style="font-size:${fs}px">${Math.round(dist)} ס״מ</text>
+    ${dot(a,"a")}${dot(b,"b")}
+  </g>`;
 }
 function wallSeg(v,o){
   const L=Math.max(20,o.len), s=Math.max(0,Math.min(o.pos, (o.wall==="top"||o.wall==="bottom"? v.w : v.h)-L));
@@ -1647,14 +1749,20 @@ function openOpenings(){
 
 /* ---- pan, zoom, drag ---- */
 const ptrs = new Map();
-let drag = null, pinch = null, opdrag = null;
+let drag = null, pinch = null, opdrag = null, mdrag = null;
 
 function toWorld(cx, cy){
   const r = $("#dzStage").getBoundingClientRect(), vb = dz.vb;
   return { x: vb.x + (cx-r.left)/r.width*vb.w, y: vb.y + (cy-r.top)/r.height*vb.h };
 }
+function onMeasDown(e){
+  if (ptrs.size>=2) return;
+  e.stopPropagation();
+  mdrag = { which: e.currentTarget.dataset.mp };
+  try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(_){}
+}
 function onItemDown(e){
-  const v = dzVar(); if (!v || ptrs.size>=2) return;
+  const v = dzVar(); if (!v || ptrs.size>=2 || dz.tool==="measure") return;
   const id = e.currentTarget.dataset.f, it = v.items.find(i=>i.id===id);
   if (!it) return;
   e.stopPropagation();
@@ -1666,7 +1774,7 @@ function onItemDown(e){
 }
 /* a door/window drags along its own wall only */
 function onOpDown(e){
-  const v = dzVar(); if (!v || ptrs.size>=2) return;
+  const v = dzVar(); if (!v || ptrs.size>=2 || dz.tool==="measure") return;
   const id = e.currentTarget.dataset.op, o = (v.openings||[]).find(x=>x.id===id);
   if (!o) return;
   e.stopPropagation();
@@ -1715,6 +1823,14 @@ function snapItem(it, v){
 function onMove(e){
   if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, {x:e.clientX,y:e.clientY});
   if (pinch && ptrs.size>=2){ doPinch(); return; }
+  if (mdrag){
+    const w = toWorld(e.clientX, e.clientY), v = dzVar();
+    const p = dz.measure[mdrag.which];
+    p.x = Math.round(clamp(w.x, -200, v.w+200)); p.y = Math.round(clamp(w.y, -200, v.h+200));
+    drawPlan();
+    if (e.cancelable) e.preventDefault();
+    return;
+  }
   if (opdrag){
     const v = dzVar(), o = (v.openings||[]).find(x=>x.id===opdrag.id); if (!o) return;
     moveOpening(o, v, toWorld(e.clientX, e.clientY));
@@ -1784,6 +1900,7 @@ function doPinch(){
 function onUp(e){
   ptrs.delete(e.pointerId);
   if (ptrs.size<2) pinch = null;
+  if (mdrag){ mdrag=null; return; }   /* the ruler is transient — nothing to save */
   if (opdrag){ opdrag=null; save(); renderDesigner(); }
   if (drag){ const v=dzVar(); if (v){ const it=v.items.find(i=>i.id===drag.id);
       if (it){ it.x=Math.round(it.x); it.y=Math.round(it.y); } } drag=null; save(); renderDesigner(); }
@@ -1872,9 +1989,9 @@ $("#dzMenu").addEventListener("click", openDzMenu);
   const stage = $("#dzStage");
   stage.addEventListener("pointerdown", e=>{
     ptrs.set(e.pointerId, {x:e.clientX,y:e.clientY});
-    if (ptrs.size===2){ pinch = { dist:0 }; drag = null; opdrag = null; panFrom = null; return; }
-    if (drag || opdrag) return;
-    if (e.target.closest(".fitem") || e.target.closest(".op")) return;   /* handled by their own downs */
+    if (ptrs.size===2){ pinch = { dist:0 }; drag = null; opdrag = null; mdrag = null; panFrom = null; return; }
+    if (drag || opdrag || mdrag) return;
+    if (e.target.closest(".fitem") || e.target.closest(".op") || e.target.closest(".mpt")) return;   /* handled by their own downs */
     dz.sel = null; dz.selOp = null; renderSelBar(); drawPlan();
     panFrom = { cx:e.clientX, cy:e.clientY, vx:dz.vb.x, vy:dz.vb.y };
   });
@@ -1888,6 +2005,7 @@ $("#dzMenu").addEventListener("click", openDzMenu);
 function renderAll(){
   renderHeader(); renderHero(); renderRoomCards(); renderMoney(); renderDesignList();
   if (uiRoom) renderRoom();
+  if (genOpen) renderGeneralBody();
 }
 $$(".tabbar [data-v]").forEach(btn=>{
   btn.addEventListener("click", ()=>{
