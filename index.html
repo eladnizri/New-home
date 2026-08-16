@@ -394,7 +394,11 @@ body.viewing3d .tabbar{ display:none; }
 .d3-hint{ position:absolute; inset-inline:0; bottom:12px; text-align:center; pointer-events:none;
   font-size:12px; font-weight:700; color:#3F4E59; transition:opacity .45s; }
 .d3-hint.gone{ opacity:0; }
-.d3-foot{ flex:none; padding: 0 14px calc(12px + env(safe-area-inset-bottom));
+.d3-modes{ display:flex; gap:6px; padding:9px 14px 2px; flex:none; }
+.d3-modes button{ flex:1; border-radius:var(--r-pill); padding:8px 0; font-size:13px; font-weight:700;
+  background: var(--card); color: var(--ink-2); box-shadow: var(--sh-sm); }
+.d3-modes button[aria-selected="true"]{ background: var(--brand); color: var(--brand-ink); }
+.d3-foot{ flex:none; padding: 6px 14px calc(12px + env(safe-area-inset-bottom));
   display:flex; gap:7px; align-items:center; flex-wrap:wrap; }
 
 .dz-vars{ display:flex; gap:6px; padding:9px 14px 0; flex:none; align-items:center; }
@@ -592,6 +596,10 @@ body.viewing3d .tabbar{ display:none; }
     <button class="dz-ico" id="d3Reset" aria-label="איפוס המבט">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
     </button>
+  </div>
+  <div class="d3-modes">
+    <button id="d3ModeInside" aria-selected="true">עומד בפנים</button>
+    <button id="d3ModeTop" aria-selected="false">מבט על</button>
   </div>
   <div class="d3-stage" id="d3Stage">
     <canvas id="d3Canvas"></canvas>
@@ -1428,7 +1436,7 @@ const CATALOG = [
   ["סלון", [["ספה תלת",220,90],["ספה דו",160,90],["ספה פינתית ר",250,180,"corner"],
              ["ספת ר גדולה",300,220,"corner"],["שזלונג",180,90],
              ["כורסה",90,85],["פוף",60,60,"circle"],["שולחן סלון",110,60],["שולחן צד",45,45],
-             ["מזנון טלוויזיה",180,40],["שטיח",200,140,"rect",true],["שטיח עגול",160,160,"circle",true]]],
+             ["מזנון טלוויזיה",180,40],["טלוויזיה",120,8],["שטיח",200,140,"rect",true],["שטיח עגול",160,160,"circle",true]]],
   ["פינת אוכל", [["שולחן אוכל 6",160,90],["שולחן אוכל 8",200,100],["שולחן עגול",120,120,"circle"],
              ["כיסא",45,45],["ספסל אוכל",140,40],["ויטרינה",120,45]]],
   ["חדר שינה", [["שולחן טואלטיקה",100,45],["כיסא טואלטיקה",40,40],["ספסל קצה מיטה",120,40],
@@ -1461,6 +1469,7 @@ const HEIGHTS = {
   "ספרייה":200, "ארון שירות":200,
   "ספה תלת":85, "ספה דו":85, "ספה פינתית ר":85, "ספת ר גדולה":85, "שזלונג":85,
   "כורסה":90, "פוף":40, "שולחן סלון":40, "שולחן צד":55, "מזנון טלוויזיה":50,
+  "טלוויזיה":[70,110],   /* wall-mounted: 70cm tall, hung 110cm off the floor */
   "שטיח":2, "שטיח עגול":2,
   "שולחן אוכל 6":75, "שולחן אוכל 8":75, "שולחן עגול":75, "כיסא":90, "ספסל אוכל":45, "ויטרינה":190,
   "שולחן טואלטיקה":78, "כיסא טואלטיקה":85, "ספסל קצה מיטה":45, "מראה עומדת":160,
@@ -2173,7 +2182,7 @@ const TONE = {
   side:[193,191,186,0.66], top:[214,212,207,0.62],   rug:[199,196,191,0.85]
 };
 
-let scene = { yaw:0, pitch:0, cam:null, geo:null, dpr:1, foot:"" };
+let scene = { yaw:0, pitch:0, cam:null, geo:null, dpr:1, foot:"", mode:"fp", topYaw:Math.PI, topPitch:-0.98 };
 
 function centroid(p){
   let x=0,y=0,z=0; for (const q of p){ x+=q[0]; y+=q[1]; z+=q[2]; }
@@ -2248,6 +2257,117 @@ function camSpot(v){
     if (score>bs){ bs=score; best=[x,y]; }
   }
   return best || [cx,cy];
+}
+
+/* ---- furniture as recognisable generic models ---------------------------
+   A piece is not a black box: a table gets legs and a top, a chair a back,
+   a sofa arms and a backrest. The silhouette carries the meaning, so a
+   glance tells a bed from a wardrobe. Every part is still measured from the
+   piece's real footprint and height — the model fits the numbers, it does
+   not invent them. */
+const MODEL = [
+  [/מיטה|מיטת|מזרן/, "bed"],
+  [/ספה|ספת|שזלונג|כורסה|כורסת|נדנדה/, "sofa"],
+  [/כיסא|כסא/, "chair"],
+  [/שולחן|שידה|שידת|טואלטיקה|מזנון|דלפק|אי מטבח/, "table"],
+  [/טלוויזי|טלויזי|מסך/, "tv"]
+];
+function modelOf(it){
+  if (it.name) for (const [re,m] of MODEL) if (re.test(it.name)) return m;
+  return "box";
+}
+/* stable hue per piece, so every item keeps its own shade run to run */
+function hashStr(s){ let h=2166136261>>>0; for (let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+function hsl2rgb(h,s,l){
+  const f=n=>{ const k=(n+h*12)%12, a=s*Math.min(l,1-l);
+    return l - a*Math.max(-1, Math.min(k-3, 9-k, 1)); };
+  return [Math.round(f(0)*255), Math.round(f(8)*255), Math.round(f(4)*255)];
+}
+/* Furniture is cream, not grey — and every piece a slightly different cream
+   so two things standing together stay tellable apart. Walls and floor keep
+   their neutral grey (TONE), which makes the warm pieces read as "the stuff
+   in the room". */
+function pieceTone(it){
+  const h = hashStr(it.id || it.name || "x");
+  const hue = (28 + (h % 26)) / 360;          /* 28–54°, warm */
+  const sat = 0.22 + ((h>>5) % 12) / 100;     /* 0.22–0.33 */
+  const lig = 0.85 + ((h>>9) % 6)  / 100;     /* 0.85–0.90 */
+  const [r,g,b] = hsl2rgb(hue, sat, lig);
+  return [r, g, b, 0.58];
+}
+/* one axis-aligned local box (centre cx,cy, size w×d, heights z0..z1),
+   rotated with the piece and emitted as six faces */
+function addBoxLocal(add, it, cx, cy, w, d, z0, z1, tone, edge){
+  const a=(it.rot||0)*Math.PI/180, ca=Math.cos(a), sa=Math.sin(a);
+  const P=(lx,ly)=>[ it.x + (cx+lx)*ca - (cy+ly)*sa, it.y + (cx+lx)*sa + (cy+ly)*ca ];
+  const C=[P(-w/2,-d/2), P(w/2,-d/2), P(w/2,d/2), P(-w/2,d/2)];
+  const ref=[ it.x + cx*ca - cy*sa, (z0+z1)/2, it.y + cx*sa + cy*ca ];
+  for (let k=0;k<4;k++){ const a2=C[k], b=C[(k+1)%4];
+    add([[a2[0],z0,a2[1]],[b[0],z0,b[1]],[b[0],z1,b[1]],[a2[0],z1,a2[1]]], tone, edge, ref); }
+  add(C.map(([x,y])=>[x,z1,y]), tone, edge, ref);   /* top */
+  add(C.map(([x,y])=>[x,z0,y]), tone, edge, ref);   /* bottom (seen when raised) */
+}
+function addCyl(add, it, zb, h, tone, toneTop, r1, r2){
+  const N=16, a0=(it.rot||0)*Math.PI/180, ca=Math.cos(a0), sa=Math.sin(a0);
+  const ref=[it.x, zb+h/2, it.y];
+  const ring=k=>{ const t=k/N*2*Math.PI, lx=Math.cos(t)*r1, ly=Math.sin(t)*r2;
+                  return [ it.x+lx*ca-ly*sa, it.y+lx*sa+ly*ca ]; };
+  const cap=[];
+  for (let k=0;k<N;k++){ const a=ring(k), b=ring(k+1);
+    add([[a[0],zb,a[1]],[b[0],zb,b[1]],[b[0],zb+h,b[1]],[a[0],zb+h,a[1]]], tone, 0, ref);
+    cap.push([a[0],zb+h,a[1]]); }
+  add(cap, toneTop, 2, ref);
+}
+function furniture3D(add, it){
+  const h=pieceH(it), zb=pieceBase(it), T=pieceTone(it), w=it.w, d=it.d;
+  const sh=m=>[T[0]*m, T[1]*m, T[2]*m, T[3]];
+  const B=(cx,cy,bw,bd,z0,z1,m)=> addBoxLocal(add, it, cx,cy, bw,bd, zb+z0, zb+z1, sh(m), 2);
+  const model=modelOf(it);
+
+  if (it.shape==="circle"){
+    if (model==="table"){                      /* pedestal table: column + round top */
+      const topT=Math.max(4,h*0.08);
+      addCyl(add, it, zb, h-topT, sh(0.8), sh(0.8), w*0.16, d*0.16);
+      addCyl(add, it, zb+h-topT, topT, sh(1), sh(1), w/2, d/2);
+    } else addCyl(add, it, zb, h, sh(1), sh(1), w/2, d/2);
+    return;
+  }
+  if (it.shape==="corner"){
+    const t=legT(it), bt=Math.min(t*0.55, 20);
+    if (model==="sofa"){                       /* seats along the L, a back on its two outer edges */
+      const seatH=Math.min(h*0.5, 42);
+      for (const lr of localRects(it)) B(lr.cx, lr.cy, lr.w, lr.d, 0, seatH, 0.97);
+      B(0, d/2 - bt/2, w, bt, 0, h, 0.88);
+      B(-w/2 + bt/2, 0, bt, d, 0, h, 0.88);
+    } else for (const lr of localRects(it)) B(lr.cx, lr.cy, lr.w, lr.d, 0, h, 1);
+    return;
+  }
+
+  /* rectangular pieces */
+  if (model==="table"){
+    const legT=clamp(Math.min(w,d)*0.09, 5, 9), topT=Math.max(4, h*0.09);
+    const lx=w/2-legT/2, ly=d/2-legT/2;
+    for (const [sx,sy] of [[-1,-1],[1,-1],[1,1],[-1,1]]) B(sx*lx, sy*ly, legT, legT, 0, h-topT, 0.78);
+    B(0,0, w,d, h-topT, h, 1);
+  } else if (model==="chair"){
+    const legT=5, seatH=Math.min(h*0.52, 46), seatT=6;
+    const lx=w/2-legT/2, ly=d/2-legT/2;
+    for (const [sx,sy] of [[-1,-1],[1,-1],[1,1],[-1,1]]) B(sx*lx, sy*ly, legT, legT, 0, seatH-seatT, 0.78);
+    B(0,0, w,d, seatH-seatT, seatH, 0.97);
+    B(0, -d/2+3, w, 6, seatH, h, 0.9);         /* backrest */
+  } else if (model==="bed"){
+    const mattH=Math.max(30, h*0.72);
+    B(0,0, w,d, 0, mattH, 1);                  /* mattress */
+    B(0, -d/2+5, w, 10, 0, Math.max(h, mattH+22), 0.9);   /* headboard, taller */
+  } else if (model==="sofa"){
+    const seatH=Math.min(h*0.45, 42), armT=clamp(w*0.14, 12, 24), backT=clamp(d*0.2, 12, 24);
+    B(0,0, w,d, 0, seatH, 0.97);               /* seat */
+    B(0, -d/2+backT/2, w, backT, 0, h, 0.9);   /* backrest */
+    B(-w/2+armT/2, backT/2, armT, d-backT, 0, h*0.78, 0.86);   /* arms */
+    B( w/2-armT/2, backT/2, armT, d-backT, 0, h*0.78, 0.86);
+  } else {                                     /* wardrobe, appliance, TV, generic */
+    B(0,0, w,d, 0, h, 1);
+  }
 }
 
 function build3D(v){
@@ -2326,41 +2446,14 @@ function build3D(v){
 
   /* ---- furniture ---- */
   for (const it of v.items){
-    const h=pieceH(it), zb=pieceBase(it);
     if (it.under){                                   /* a rug is a floor layer */
+      const T=pieceTone(it), flat=[T[0],T[1],T[2],0.9];
       for (const lr of localRects(it))
-        add(rectWorld(it,lr).map(([x,y])=>[x,0.8,y]), TONE.rug, 1, eye, true);
+        add(rectWorld(it,lr).map(([x,y])=>[x,0.8,y]), flat, 1, eye, true);
       continue;
     }
-    const ref=[it.x, zb+h/2, it.y];
-    if (it.shape==="circle"){
-      const N=16, r1=it.w/2, r2=it.d/2, a0=(it.rot||0)*Math.PI/180;
-      const ca=Math.cos(a0), sa=Math.sin(a0);
-      const ring=k=>{ const t=k/N*2*Math.PI, lx=Math.cos(t)*r1, ly=Math.sin(t)*r2;
-                      return [ it.x+lx*ca-ly*sa, it.y+lx*sa+ly*ca ]; };
-      const cap=[];
-      for (let k=0;k<N;k++){
-        const a=ring(k), b=ring(k+1);
-        add([[a[0],zb,a[1]],[b[0],zb,b[1]],[b[0],zb+h,b[1]],[a[0],zb+h,a[1]]], TONE.side, 0, ref);
-        cap.push([a[0],zb+h,a[1]]);
-      }
-      add(cap, TONE.top, 2, ref);
-    } else {
-      const a0=(it.rot||0)*Math.PI/180, ca=Math.cos(a0), sa=Math.sin(a0);
-      for (const lr of localRects(it)){             /* two rects for an L-shape */
-        const C=rectWorld(it,lr);
-        /* each sub-box orients its faces from its OWN centre — the piece centre
-           sits outside the second leg of an L and would flip its normals */
-        const bref=[ it.x + lr.cx*ca - lr.cy*sa, zb+h/2, it.y + lr.cx*sa + lr.cy*ca ];
-        for (let k=0;k<4;k++){
-          const a=C[k], b=C[(k+1)%4];
-          add([[a[0],zb,a[1]],[b[0],zb,b[1]],[b[0],zb+h,b[1]],[a[0],zb+h,a[1]]], TONE.side, 2, bref);
-        }
-        add(C.map(([x,y])=>[x,zb+h,y]), TONE.top, 2, bref);
-        if (zb>0) add(C.map(([x,y])=>[x,zb,y]), TONE.side, 2, bref);   /* wall-hung: it has an underside */
-      }
-    }
-    labels.push({ p:[it.x, zb+h+14, it.y], t:it.name });
+    furniture3D(add, it);
+    labels.push({ p:[it.x, pieceBase(it)+pieceH(it)+14, it.y], t:it.name });
   }
 
   /* Aim across the room rather than into the nearest corner: from an
@@ -2380,7 +2473,11 @@ function build3D(v){
   }
   /* Tilted a little down. At eye level a 260cm room is mostly blank wall —
      you tip your head down to take in the furniture, so the view starts there. */
-  return { faces, labels, cam:eye, yaw0, pitch0:-0.28, mesh:mesh3D(faces) };
+  return { faces, labels, cam:eye, yaw0, pitch0:-0.28,
+           roomW:v.w, roomH:v.h,
+           mesh:mesh3D(faces),
+           /* the top-down mesh drops the ceiling so you can see in */
+           meshTop:mesh3D(faces.filter(f=> f.tone!==TONE.ceil)) };
 }
 
 /* Flatten the faces into the two buffers WebGL draws: filled triangles and
@@ -2474,6 +2571,24 @@ function viewMatrix(cam, yaw, pitch){
     B.right[2], B.up[2], z[2], 0,
     -d(B.right,cam), -d(B.up,cam), -d(z,cam), 1 ]);
 }
+/* column-major mat4 times a vec4 */
+function mulMV(m, v){
+  const o=[0,0,0,0];
+  for (let i=0;i<4;i++) o[i]=m[i]*v[0]+m[4+i]*v[1]+m[8+i]*v[2]+m[12+i]*v[3];
+  return o;
+}
+/* The bird's-eye view: orbit above the room looking down, framing the whole
+   plan. Same camera maths as standing inside — only the position and angle
+   differ — so furniture shows as real 3D blocks, just seen from above and
+   with the ceiling dropped. */
+function topCam(geo){
+  const target=[geo.roomW/2, 45, geo.roomH/2];
+  const yaw=scene.topYaw, pitch=scene.topPitch;
+  const B=camBasis(yaw,pitch);
+  const dist=Math.hypot(geo.roomW, geo.roomH)*0.98;
+  const cam=[ target[0]-B.fwd[0]*dist, target[1]-B.fwd[1]*dist, target[2]-B.fwd[2]*dist ];
+  return { cam, yaw, pitch };
+}
 
 function size3D(){
   const st=$("#d3Stage"), r=st.getBoundingClientRect();
@@ -2491,11 +2606,14 @@ function draw3D(){
   const cv=$("#d3Canvas");
   if (!cv || !scene.geo || !cv.width) return;
   const W=cv.width, H=cv.height;
-  const G=upload3D(scene.geo.mesh);
+  const top = scene.mode==="top";
+  const G=upload3D(top ? scene.geo.meshTop : scene.geo.mesh);
   if (!G){ $("#d3Hint").textContent = "התצוגה התלת־ממדית לא נתמכת בדפדפן הזה"; return; }
   const gl=G.gl;
+
+  const c = top ? topCam(scene.geo) : { cam:scene.cam, yaw:scene.yaw, pitch:scene.pitch };
   const proj = perspective(FOV_Y, W/H);
-  const view = viewMatrix(scene.cam, scene.yaw, scene.pitch);
+  const view = viewMatrix(c.cam, c.yaw, c.pitch);
 
   gl.viewport(0,0,W,H);
   gl.clearColor(0.863,0.906,0.937,1);           /* daylight beyond the openings */
@@ -2509,29 +2627,28 @@ function draw3D(){
     gl.bindBuffer(gl.ARRAY_BUFFER,bc); gl.enableVertexAttribArray(G.aCol);
     gl.vertexAttribPointer(G.aCol,4,gl.FLOAT,false,0,0);
   };
-  const m=scene.geo.mesh;
+  const m = top ? scene.geo.meshTop : scene.geo.mesh;
   bind(G.bPos,G.bCol);   gl.drawArrays(gl.TRIANGLES,0,m.nTri);
   bind(G.bLPos,G.bLCol); gl.drawArrays(gl.LINES,0,m.nLine);
 
-  drawTags3D(W,H);
+  drawTags3D(W,H,proj,view);
 }
 
-/* Names float over the room on their own canvas. Nearest wins a contested
-   spot, so a close piece is never labelled by whatever stands behind it. */
-function drawTags3D(W,H){
+/* Names float over the room on their own canvas. Projected with the very
+   matrices the room was drawn with, so labels track both views. Nearest
+   wins a contested spot, so a close piece is never labelled by whatever
+   stands behind it. */
+function drawTags3D(W,H,proj,view){
   const cv=$("#d3Tags"), ctx=cv.getContext("2d"), dpr=scene.dpr;
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,W,H);
-  const B=camBasis(scene.yaw, scene.pitch), cam=scene.cam;
-  const f=(H/2)/Math.tan(FOV_Y/2);
   const tags=[];
   for (const lb of scene.geo.labels){
-    const d=[lb.p[0]-cam[0], lb.p[1]-cam[1], lb.p[2]-cam[2]];
-    const zc = d[0]*B.fwd[0] + d[1]*B.fwd[1] + d[2]*B.fwd[2];
-    if (zc < NEARZ) continue;
-    const xc = d[0]*B.right[0] + d[1]*B.right[1] + d[2]*B.right[2];
-    const yc = d[0]*B.up[0]    + d[1]*B.up[1]    + d[2]*B.up[2];
-    tags.push({ t:lb.t, x: W/2 + f*xc/zc, y: H/2 - f*yc/zc, z:zc });
+    const vs = mulMV(view, [lb.p[0], lb.p[1], lb.p[2], 1]);
+    if (-vs[2] < NEARZ) continue;               /* behind the camera */
+    const cs = mulMV(proj, vs);
+    if (cs[3] <= 0) continue;
+    tags.push({ t:lb.t, x:(cs[0]/cs[3]*0.5+0.5)*W, y:(1-(cs[1]/cs[3]*0.5+0.5))*H, z:-vs[2] });
   }
   tags.sort((a,b)=> a.z-b.z);
   ctx.font = `700 ${Math.round(11.5*dpr)}px Rubik, system-ui, sans-serif`;
@@ -2553,29 +2670,53 @@ function drawTags3D(W,H){
   }
 }
 
-/* which wall you're currently facing */
+/* status line — depends on the view mode */
 function foot3D(){
   const v=dzVar(); if (!v) return;
-  const fx=Math.sin(scene.yaw), fz=Math.cos(scene.yaw);
-  const wall = Math.abs(fx)>Math.abs(fz)
-    ? (fx>0 ? "קיר ימין" : "קיר שמאל")
-    : (fz>0 ? "קיר תחתון" : "קיר עליון");
-  const txt = `<span class="chipn">פונה ל${wall}</span>
-    <span class="chipn n" dir="ltr">${v.w}×${v.h} ס״מ</span>
-    <span class="chipn n" dir="ltr">תקרה ${CEIL_H}</span>
-    <span class="chipn n" dir="ltr">גובה עיניים ${EYE_H}</span>`;
+  let txt;
+  if (scene.mode==="top"){
+    txt = `<span class="chipn">מבט על</span>
+      <span class="chipn n" dir="ltr">${v.w}×${v.h} ס״מ</span>
+      <span class="chipn n" dir="ltr">${(v.w*v.h/10000).toFixed(1)} מ״ר</span>
+      <span class="chipn">בלי תקרה</span>`;
+  } else {
+    const fx=Math.sin(scene.yaw), fz=Math.cos(scene.yaw);
+    const wall = Math.abs(fx)>Math.abs(fz)
+      ? (fx>0 ? "קיר ימין" : "קיר שמאל")
+      : (fz>0 ? "קיר תחתון" : "קיר עליון");
+    txt = `<span class="chipn">פונה ל${wall}</span>
+      <span class="chipn n" dir="ltr">${v.w}×${v.h} ס״מ</span>
+      <span class="chipn n" dir="ltr">תקרה ${CEIL_H}</span>
+      <span class="chipn n" dir="ltr">גובה עיניים ${EYE_H}</span>`;
+  }
   if (txt!==scene.foot){ scene.foot=txt; $("#d3Foot").innerHTML=txt; }
 }
 
+function setMode3D(mode){
+  scene.mode = mode;
+  const top = mode==="top";
+  $("#d3ModeInside").setAttribute("aria-selected", String(!top));
+  $("#d3ModeTop").setAttribute("aria-selected", String(top));
+  $("#d3Hint").textContent = top ? "גרור כדי לסובב את המבט" : "גרור כדי להסתכל מסביב";
+  $("#d3Hint").classList.remove("gone");
+  scene.foot="";
+  draw3D(); foot3D();
+}
 function open3D(){
   const v=dzVar(); if (!v) return;
   scene.geo   = build3D(v);
   scene.cam   = scene.geo.cam;
   scene.yaw   = scene.geo.yaw0;
   scene.pitch = scene.geo.pitch0;
+  scene.topYaw = Math.PI;         /* plan +y points down the screen, like the 2D plan */
+  scene.topPitch = -0.98;
+  scene.mode  = "fp";
   scene.foot  = "";
   $("#d3Name").textContent = roomName(dz.room);
   $("#d3Sub").textContent  = `${v.name} · ${v.items.length} רהיטים`;
+  $("#d3ModeInside").setAttribute("aria-selected","true");
+  $("#d3ModeTop").setAttribute("aria-selected","false");
+  $("#d3Hint").textContent = "גרור כדי להסתכל מסביב";
   $("#d3Hint").classList.remove("gone");
   document.body.classList.add("viewing3d");
   requestAnimationFrame(()=>{ if (size3D()) draw3D(); foot3D(); });
@@ -2585,9 +2726,13 @@ function close3D(){ document.body.classList.remove("viewing3d"); scene.geo=null;
 /* ---- 3D wiring ---- */
 $("#dz3d").addEventListener("click", open3D);
 $("#d3Back").addEventListener("click", close3D);
+$("#d3ModeInside").addEventListener("click", ()=> setMode3D("fp"));
+$("#d3ModeTop").addEventListener("click", ()=> setMode3D("top"));
 $("#d3Reset").addEventListener("click", ()=>{
   if (!scene.geo) return;
-  scene.yaw = scene.geo.yaw0; scene.pitch = scene.geo.pitch0; draw3D(); foot3D();
+  if (scene.mode==="top"){ scene.topYaw=Math.PI; scene.topPitch=-0.98; }
+  else { scene.yaw = scene.geo.yaw0; scene.pitch = scene.geo.pitch0; }
+  draw3D(); foot3D();
 });
 (function(){
   const st=$("#d3Stage");
@@ -2601,9 +2746,15 @@ $("#d3Reset").addEventListener("click", ()=>{
     if (!from) return;
     const dx=e.clientX-from.x, dy=e.clientY-from.y;
     from={ x:e.clientX, y:e.clientY };
-    /* drag the world, the way a photo sphere behaves */
-    scene.yaw  -= dx*0.0052;
-    scene.pitch = clamp(scene.pitch + dy*0.0052, -1.05, 1.05);
+    if (scene.mode==="top"){
+      /* orbit around the room and tilt between overhead and low bird's-eye */
+      scene.topYaw  -= dx*0.005;
+      scene.topPitch = clamp(scene.topPitch - dy*0.004, -1.45, -0.4);
+    } else {
+      /* drag the world, the way a photo sphere behaves */
+      scene.yaw  -= dx*0.0052;
+      scene.pitch = clamp(scene.pitch + dy*0.0052, -1.05, 1.05);
+    }
     draw3D();
   });
   const end=()=>{ if (from){ from=null; foot3D(); } };
