@@ -388,7 +388,9 @@ body.viewing3d .d3{ display:flex; }
 body.viewing3d .tabbar{ display:none; }
 .d3-stage{ flex:1; min-height:0; position:relative; margin:10px 14px; border-radius:var(--r-card);
   overflow:hidden; box-shadow: var(--sh); background:#DCE7EF; touch-action:none; }
-.d3-stage > canvas{ display:block; width:100%; height:100%; }
+/* the GL canvas paints the room; the tag canvas floats names over it */
+.d3-stage > canvas{ position:absolute; inset:0; display:block; width:100%; height:100%; }
+.d3-stage > #d3Tags{ pointer-events:none; }
 .d3-hint{ position:absolute; inset-inline:0; bottom:12px; text-align:center; pointer-events:none;
   font-size:12px; font-weight:700; color:#3F4E59; transition:opacity .45s; }
 .d3-hint.gone{ opacity:0; }
@@ -593,6 +595,7 @@ body.viewing3d .tabbar{ display:none; }
   </div>
   <div class="d3-stage" id="d3Stage">
     <canvas id="d3Canvas"></canvas>
+    <canvas id="d3Tags"></canvas>
     <div class="d3-hint" id="d3Hint">גרור כדי להסתכל מסביב</div>
   </div>
   <div class="d3-foot" id="d3Foot"></div>
@@ -2142,19 +2145,23 @@ function openDzMenu(){
 }
 
 /* ============================================================ 3D VIEW
-   You stand inside the plan you drew and look around. A painter's-algorithm
-   renderer on a plain 2D canvas: every surface is a flat quad measured in
-   centimetres, so nothing here is a stylistic approximation — the geometry
-   IS the plan. No library, so it works offline like the rest of the planner.
-   Big surfaces are chopped into ~50cm chunks because painter's sorting is
-   per-face: one huge wall quad would wrongly cover furniture standing in
-   front of its far end. */
+   You stand inside the plan you drew and look around. Every surface is a
+   flat polygon measured in centimetres, so nothing here is a stylistic
+   approximation — the geometry IS the plan.
+
+   Drawn through WebGL for its per-pixel depth buffer. Sorting whole faces
+   by distance instead (the obvious canvas-2D approach) cannot express
+   "this face is partly in front of that one", so surfaces swap order as
+   you turn and visibly pop in and out. A depth buffer decides occlusion
+   per pixel, which is exact at every angle. Shaders are a dozen lines and
+   WebGL 1 is everywhere, so this still needs no library and no network. */
 const CEIL_H = 260;              /* ceiling, cm */
 const EYE_H  = 170;              /* eye height, cm */
 const DOOR_H = 200;              /* door head, cm */
 const WIN_B  = 90, WIN_T = 210;  /* window sill and head, cm */
-const CHUNK  = 50;               /* subdivision for depth sorting, cm */
-const NEARZ  = 8;                /* near clip plane, cm */
+const CHUNK  = 50;               /* floor tiling, cm — a visible sense of scale */
+const NEARZ  = 6;                /* near clip plane, cm */
+const FARZ   = 4000;             /* far clip plane, cm */
 const FOV_Y  = 68*Math.PI/180;   /* vertical field of view */
 const LIGHT  = (()=>{ const v=[0.36,0.88,-0.30], L=Math.hypot(...v); return v.map(c=>c/L); })();
 const SKY    = "#DCE7EF";        /* what you see through a door or window */
@@ -2183,20 +2190,6 @@ function faceNormal(p){
   }
   const L = Math.hypot(nx,ny,nz) || 1;
   return [nx/L, ny/L, nz/L];
-}
-/* Sutherland–Hodgman against the near plane, in view space */
-function clipNear(pts){
-  const out=[];
-  for (let i=0;i<pts.length;i++){
-    const A=pts[i], B=pts[(i+1)%pts.length];
-    const ain = A[2]>=NEARZ, bin = B[2]>=NEARZ;
-    if (ain) out.push(A);
-    if (ain!==bin){
-      const t = (NEARZ-A[2])/(B[2]-A[2]);
-      out.push([A[0]+(B[0]-A[0])*t, A[1]+(B[1]-A[1])*t, NEARZ]);
-    }
-  }
-  return out;
 }
 /* axis-aligned rect minus rect — up to four pieces. Used to punch the
    corner notches out of the floor and ceiling tiling. */
@@ -2259,13 +2252,20 @@ function camSpot(v){
 
 function build3D(v){
   const faces=[], labels=[];
-  /* `ref` orients a face's normal outward from the solid it belongs to;
-     `two` marks the room shell, which is always seen from the inside. */
-  const add=(p, tone, edge, ref, two)=>{
+  /* Where you stand is settled first: the room shell's lit side is the side
+     facing you, and since you never leave the room that is fixed geometry,
+     not a per-frame decision. */
+  const [cx,cy] = camSpot(v);
+  const eye=[cx, EYE_H, cy];
+
+  /* `ref` is the point a face turns its lit side away from — its own solid's
+     centre. Shell surfaces pass `toward`, turning their lit side inward. */
+  const add=(p, tone, edge, ref, toward)=>{
     const c=centroid(p);
     let n=faceNormal(p);
-    if (ref && (n[0]*(c[0]-ref[0]) + n[1]*(c[1]-ref[1]) + n[2]*(c[2]-ref[2])) < 0) n=[-n[0],-n[1],-n[2]];
-    faces.push({ p, c, n, tone, edge:edge||0, two:!!two });
+    const away = n[0]*(c[0]-ref[0]) + n[1]*(c[1]-ref[1]) + n[2]*(c[2]-ref[2]);
+    if (toward ? away>0 : away<0) n=[-n[0],-n[1],-n[2]];
+    faces.push({ p, n, tone, edge:edge||0 });
   };
 
   /* ---- floor and ceiling, tiled so depth sorting stays honest ---- */
@@ -2275,8 +2275,8 @@ function build3D(v){
     for (const k of notches){ const nx=[]; for (const r of rects) nx.push(...rectMinus(r,k)); rects=nx; }
     for (const r of rects){
       const q=[[r.x0,r.y0],[r.x1,r.y0],[r.x1,r.y1],[r.x0,r.y1]];
-      add(q.map(([a,b])=>[a,0,b]),      TONE.floor, 1, null, true);
-      add(q.map(([a,b])=>[a,CEIL_H,b]), TONE.ceil,  0, null, true);
+      add(q.map(([a,b])=>[a,0,b]),      TONE.floor, 1, eye, true);
+      add(q.map(([a,b])=>[a,CEIL_H,b]), TONE.ceil,  0, eye, true);
     }
   }
 
@@ -2319,7 +2319,7 @@ function build3D(v){
       for (let k=0;k<n;k++){
         const a=p0+(p1-p0)*k/n, b=p0+(p1-p0)*(k+1)/n;
         const X0=A[0]+ux*a, Z0=A[1]+uy*a, X1=A[0]+ux*b, Z1=A[1]+uy*b;
-        add([[X0,y0,Z0],[X1,y0,Z1],[X1,y1,Z1],[X0,y1,Z0]], TONE.wall, 0, null, true);
+        add([[X0,y0,Z0],[X1,y0,Z1],[X1,y1,Z1],[X0,y1,Z0]], TONE.wall, 0, eye, true);
       }
     }
   }
@@ -2329,7 +2329,7 @@ function build3D(v){
     const h=pieceH(it), zb=pieceBase(it);
     if (it.under){                                   /* a rug is a floor layer */
       for (const lr of localRects(it))
-        add(rectWorld(it,lr).map(([x,y])=>[x,0.8,y]), TONE.rug, 1, null, true);
+        add(rectWorld(it,lr).map(([x,y])=>[x,0.8,y]), TONE.rug, 1, eye, true);
       continue;
     }
     const ref=[it.x, zb+h/2, it.y];
@@ -2363,7 +2363,6 @@ function build3D(v){
     labels.push({ p:[it.x, zb+h+14, it.y], t:it.name });
   }
 
-  const [cx,cy] = camSpot(v);
   /* Aim across the room rather than into the nearest corner: from an
      off-centre spot the middle of the room is what you want to be looking
      at. Standing dead centre there is no such direction, so fall back to
@@ -2381,83 +2380,158 @@ function build3D(v){
   }
   /* Tilted a little down. At eye level a 260cm room is mostly blank wall —
      you tip your head down to take in the furniture, so the view starts there. */
-  return { faces, labels, cam:[cx, EYE_H, cy], yaw0, pitch0:-0.28 };
+  return { faces, labels, cam:eye, yaw0, pitch0:-0.28, mesh:mesh3D(faces) };
+}
+
+/* Flatten the faces into the two buffers WebGL draws: filled triangles and
+   the outlines on top. Shading bakes in here — the light is fixed in the
+   room, so a face's colour never changes as you turn. */
+function mesh3D(faces){
+  const pos=[], col=[], lpos=[], lcol=[];
+  for (const F of faces){
+    const [r,g,b,amb] = F.tone;
+    const key = Math.max(0, F.n[0]*LIGHT[0] + F.n[1]*LIGHT[1] + F.n[2]*LIGHT[2]);
+    const s = (amb + (1-amb)*key)/255;
+    const cr=r*s, cg=g*s, cb=b*s;
+    for (let i=1;i<F.p.length-1;i++)          /* fan-triangulate */
+      for (const q of [F.p[0], F.p[i], F.p[i+1]]){
+        pos.push(q[0],q[1],q[2]); col.push(cr,cg,cb,1);
+      }
+    if (F.edge){
+      const a = F.edge===2 ? 0.40 : 0.16;
+      for (let i=0;i<F.p.length;i++){
+        const A=F.p[i], B=F.p[(i+1)%F.p.length];
+        lpos.push(A[0],A[1],A[2], B[0],B[1],B[2]);
+        lcol.push(0.12,0.14,0.16,a, 0.12,0.14,0.16,a);
+      }
+    }
+  }
+  return { pos:new Float32Array(pos), col:new Float32Array(col),
+           lpos:new Float32Array(lpos), lcol:new Float32Array(lcol),
+           nTri:pos.length/3, nLine:lpos.length/3 };
+}
+
+/* ---- WebGL plumbing ---- */
+const VERT = `attribute vec3 aPos; attribute vec4 aCol;
+uniform mat4 uProj, uView; varying vec4 vCol;
+void main(){ gl_Position = uProj * uView * vec4(aPos,1.0); vCol = aCol; }`;
+const FRAG = `precision mediump float; varying vec4 vCol;
+void main(){ gl_FragColor = vCol; }`;
+
+let GL = null;
+function gpu(){
+  if (GL) return GL;
+  const cv=$("#d3Canvas");
+  const gl = cv.getContext("webgl", { antialias:true, alpha:false, depth:true, preserveDrawingBuffer:true })
+          || cv.getContext("experimental-webgl", { antialias:true, alpha:false, depth:true });
+  if (!gl) return null;
+  const sh=(t,src)=>{ const s=gl.createShader(t); gl.shaderSource(s,src); gl.compileShader(s); return s; };
+  const prog=gl.createProgram();
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, VERT));
+  gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FRAG));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return null;
+  gl.useProgram(prog);
+  GL = { gl, prog,
+    aPos: gl.getAttribLocation(prog,"aPos"), aCol: gl.getAttribLocation(prog,"aCol"),
+    uProj: gl.getUniformLocation(prog,"uProj"), uView: gl.getUniformLocation(prog,"uView"),
+    bPos: gl.createBuffer(), bCol: gl.createBuffer(),
+    bLPos: gl.createBuffer(), bLCol: gl.createBuffer(), loaded:null };
+  gl.enable(gl.DEPTH_TEST);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  /* nudge the fills back so outlines sit cleanly on their own surface */
+  gl.enable(gl.POLYGON_OFFSET_FILL);
+  gl.polygonOffset(1,1);
+  return GL;
+}
+function upload3D(mesh){
+  const G=gpu(); if (!G || G.loaded===mesh) return G;
+  const gl=G.gl, put=(buf,data)=>{ gl.bindBuffer(gl.ARRAY_BUFFER,buf); gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW); };
+  put(G.bPos, mesh.pos); put(G.bCol, mesh.col);
+  put(G.bLPos, mesh.lpos); put(G.bLCol, mesh.lcol);
+  G.loaded = mesh;
+  return G;
+}
+function perspective(fovy, aspect){
+  const f=1/Math.tan(fovy/2), nf=1/(NEARZ-FARZ);
+  return new Float32Array([ f/aspect,0,0,0,  0,f,0,0,
+    0,0,(FARZ+NEARZ)*nf,-1,  0,0,2*FARZ*NEARZ*nf,0 ]);
+}
+/* Camera basis: yaw 0 looks down the plan (+z), +yaw turns toward plan +x,
+   then pitch tilts that basis up. WebGL looks down -z, hence the negated
+   forward axis. */
+function camBasis(yaw, pitch){
+  const cy=Math.cos(yaw), sy=Math.sin(yaw), cp=Math.cos(pitch), sp=Math.sin(pitch);
+  return { right:[cy,0,-sy], up:[-sy*sp,cp,-cy*sp], fwd:[sy*cp,sp,cy*cp] };
+}
+function viewMatrix(cam, yaw, pitch){
+  const B=camBasis(yaw,pitch), z=[-B.fwd[0],-B.fwd[1],-B.fwd[2]];
+  const d=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+  return new Float32Array([
+    B.right[0], B.up[0], z[0], 0,
+    B.right[1], B.up[1], z[1], 0,
+    B.right[2], B.up[2], z[2], 0,
+    -d(B.right,cam), -d(B.up,cam), -d(z,cam), 1 ]);
 }
 
 function size3D(){
-  const cv=$("#d3Canvas"), st=$("#d3Stage");
-  const r=st.getBoundingClientRect();
+  const st=$("#d3Stage"), r=st.getBoundingClientRect();
   if (!r.width || !r.height) return false;
   scene.dpr = Math.min(window.devicePixelRatio||1, 2);
-  cv.width  = Math.round(r.width  * scene.dpr);
-  cv.height = Math.round(r.height * scene.dpr);
+  for (const id of ["#d3Canvas","#d3Tags"]){
+    const cv=$(id);
+    cv.width  = Math.round(r.width  * scene.dpr);
+    cv.height = Math.round(r.height * scene.dpr);
+  }
   return true;
 }
 
 function draw3D(){
   const cv=$("#d3Canvas");
   if (!cv || !scene.geo || !cv.width) return;
-  const ctx=cv.getContext("2d"), W=cv.width, H=cv.height, dpr=scene.dpr;
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.fillStyle = SKY; ctx.fillRect(0,0,W,H);
+  const W=cv.width, H=cv.height;
+  const G=upload3D(scene.geo.mesh);
+  if (!G){ $("#d3Hint").textContent = "התצוגה התלת־ממדית לא נתמכת בדפדפן הזה"; return; }
+  const gl=G.gl;
+  const proj = perspective(FOV_Y, W/H);
+  const view = viewMatrix(scene.cam, scene.yaw, scene.pitch);
 
-  const cam=scene.cam;
-  const cy=Math.cos(scene.yaw), sy=Math.sin(scene.yaw);
-  const cp=Math.cos(scene.pitch), sp=Math.sin(scene.pitch);
-  const f=(H/2)/Math.tan(FOV_Y/2);
-  /* forward is (sin yaw, 0, cos yaw): yaw 0 looks down the plan, +yaw turns
-     toward plan +x. Pitch then tilts that basis up. */
-  const view = p=>{
-    const dx=p[0]-cam[0], dy=p[1]-cam[1], dz=p[2]-cam[2];
-    const xc = dx*cy - dz*sy, zf = dx*sy + dz*cy;
-    return [ xc, dy*cp - zf*sp, zf*cp + dy*sp ];
+  gl.viewport(0,0,W,H);
+  gl.clearColor(0.863,0.906,0.937,1);           /* daylight beyond the openings */
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.uniformMatrix4fv(G.uProj,false,proj);
+  gl.uniformMatrix4fv(G.uView,false,view);
+
+  const bind=(bp,bc)=>{
+    gl.bindBuffer(gl.ARRAY_BUFFER,bp); gl.enableVertexAttribArray(G.aPos);
+    gl.vertexAttribPointer(G.aPos,3,gl.FLOAT,false,0,0);
+    gl.bindBuffer(gl.ARRAY_BUFFER,bc); gl.enableVertexAttribArray(G.aCol);
+    gl.vertexAttribPointer(G.aCol,4,gl.FLOAT,false,0,0);
   };
+  const m=scene.geo.mesh;
+  bind(G.bPos,G.bCol);   gl.drawArrays(gl.TRIANGLES,0,m.nTri);
+  bind(G.bLPos,G.bLCol); gl.drawArrays(gl.LINES,0,m.nLine);
 
-  const draw=[];
-  for (const F of scene.geo.faces){
-    let n=F.n;
-    const facing = n[0]*(cam[0]-F.c[0]) + n[1]*(cam[1]-F.c[1]) + n[2]*(cam[2]-F.c[2]);
-    if (F.two){ if (facing<0) n=[-n[0],-n[1],-n[2]]; }   /* shell: seen from inside */
-    else if (facing<=0) continue;                        /* solid: cull the back */
-    const vp = clipNear(F.p.map(view));
-    if (vp.length<3) continue;
-    let z=0; for (const q of vp) z+=q[2];
-    draw.push({ F, n, vp, z:z/vp.length });
-  }
-  draw.sort((a,b)=> b.z-a.z);                            /* far to near */
+  drawTags3D(W,H);
+}
 
-  ctx.lineJoin = "round";
-  for (const o of draw){
-    const [r,g,b,amb] = o.F.tone;
-    const key = Math.max(0, o.n[0]*LIGHT[0] + o.n[1]*LIGHT[1] + o.n[2]*LIGHT[2]);
-    const s = amb + (1-amb)*key;
-    ctx.beginPath();
-    for (let i=0;i<o.vp.length;i++){
-      const q=o.vp[i];
-      const X = W/2 + f*q[0]/q[2], Y = H/2 - f*q[1]/q[2];
-      i ? ctx.lineTo(X,Y) : ctx.moveTo(X,Y);
-    }
-    ctx.closePath();
-    const fill = `rgb(${Math.round(r*s)},${Math.round(g*s)},${Math.round(b*s)})`;
-    ctx.fillStyle = fill;
-    ctx.fill();
-    /* Adjacent chunks of one surface are separate polygons, and antialiasing
-       leaves a hairline between them. Outlining each in its own colour welds
-       them back into a continuous wall or floor. */
-    ctx.strokeStyle = fill; ctx.lineWidth = dpr; ctx.stroke();
-    if (o.F.edge){
-      ctx.strokeStyle = o.F.edge===2 ? "rgba(34,40,44,.30)" : "rgba(34,40,44,.10)";
-      ctx.lineWidth = dpr*0.9;
-      ctx.stroke();
-    }
-  }
-
-  /* names, nearest first so the closest piece wins a contested spot */
+/* Names float over the room on their own canvas. Nearest wins a contested
+   spot, so a close piece is never labelled by whatever stands behind it. */
+function drawTags3D(W,H){
+  const cv=$("#d3Tags"), ctx=cv.getContext("2d"), dpr=scene.dpr;
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,W,H);
+  const B=camBasis(scene.yaw, scene.pitch), cam=scene.cam;
+  const f=(H/2)/Math.tan(FOV_Y/2);
   const tags=[];
   for (const lb of scene.geo.labels){
-    const q=view(lb.p);
-    if (q[2]<NEARZ) continue;
-    tags.push({ t:lb.t, x: W/2 + f*q[0]/q[2], y: H/2 - f*q[1]/q[2], z:q[2] });
+    const d=[lb.p[0]-cam[0], lb.p[1]-cam[1], lb.p[2]-cam[2]];
+    const zc = d[0]*B.fwd[0] + d[1]*B.fwd[1] + d[2]*B.fwd[2];
+    if (zc < NEARZ) continue;
+    const xc = d[0]*B.right[0] + d[1]*B.right[1] + d[2]*B.right[2];
+    const yc = d[0]*B.up[0]    + d[1]*B.up[1]    + d[2]*B.up[2];
+    tags.push({ t:lb.t, x: W/2 + f*xc/zc, y: H/2 - f*yc/zc, z:zc });
   }
   tags.sort((a,b)=> a.z-b.z);
   ctx.font = `700 ${Math.round(11.5*dpr)}px Rubik, system-ui, sans-serif`;
