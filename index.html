@@ -330,6 +330,25 @@ input,select{ font:inherit; color:inherit; }
 .seg button[data-s="buy"][aria-pressed="true"]{  background: var(--d-buy); }
 .seg button[data-s="done"][aria-pressed="true"]{ background: var(--d-done); }
 
+.photo-line{ margin-top:9px; }
+.pbtn{ display:inline-flex; align-items:center; gap:6px; padding:6px 13px; border-radius: var(--r-pill);
+  background: var(--card-2); color: var(--ink-2); font-size:12.5px; font-weight:700; box-shadow: var(--sh-sm); }
+.pbtn svg{ width:15px; height:15px; flex:none; }
+.pbtn:active{ transform: scale(.96); }
+.pbtn.on{ background: var(--brand); color: var(--brand-ink); }
+
+.lightbox{ position:fixed; inset:0; z-index:60; display:none; flex-direction:column;
+  align-items:center; justify-content:center; gap:18px; padding:24px;
+  background: rgba(12,16,14,.86); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.lightbox.on{ display:flex; }
+.lightbox img{ max-width:92vw; max-height:70vh; border-radius:16px; object-fit:contain;
+  background:#fff; box-shadow: 0 24px 70px rgba(0,0,0,.55); }
+.lb-x{ position:absolute; top:calc(14px + env(safe-area-inset-top)); inset-inline-end:16px;
+  width:44px; height:44px; border-radius:50%; display:grid; place-items:center;
+  background: rgba(255,255,255,.18); color:#fff; }
+.lb-x:active{ transform: scale(.94); }
+.lb-tools{ display:flex; gap:10px; }
+
 .btn{ background: var(--brand); color: var(--brand-ink); border-radius: var(--r-pill); padding:12px 20px; font-size:14.5px; font-weight:700; }
 .btn:active{ transform: scale(.98); }
 .btn.ghost{ background: var(--card-2); color: var(--ink); }
@@ -625,6 +644,19 @@ body.viewing3d .tabbar{ display:none; }
 
 <div class="toast" id="toast"></div>
 
+<!-- Full-screen photo viewer for a model the user wants to buy -->
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="תמונת הדגם">
+  <button class="lb-x" id="lbClose" aria-label="סגירה">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  </button>
+  <img id="lbImg" alt="דגם לקנייה">
+  <div class="lb-tools">
+    <button class="btn ghost sm" id="lbReplace">החלף תמונה</button>
+    <button class="btn ghost sm" id="lbRemove" style="color:var(--d-buy)">הסר תמונה</button>
+  </div>
+</div>
+<input type="file" id="photoInput" accept="image/*" hidden>
+
 <!-- Firebase (compat build, classic globals). Loaded from Google's CDN.
      If it fails to load (offline / blocked) the app still works fully from
      localStorage — sync is best-effort. -->
@@ -796,7 +828,10 @@ function normalize(s){
     room: i.room, name: String(i.name||"פריט"),
     est: Math.max(0, +i.est||0),
     actual: i.actual==null ? null : Math.max(0, +i.actual||0),
-    status: STATUS[i.status] ? i.status : "buy"
+    status: STATUS[i.status] ? i.status : "buy",
+    /* optional photo of the model the user wants to buy — a compressed
+       data: URI, carried in the state blob so the family sees it too */
+    img: (typeof i.img === "string" && i.img.slice(0,5) === "data:") ? i.img : null
   }));
 
   /* room layout plans, keyed by room id; anything malformed is dropped */
@@ -1152,6 +1187,15 @@ function itemHTML(i){
       <div class="seg" role="group" aria-label="סטטוס">
         ${Object.keys(STATUS).map(s=>`<button data-s="${s}" aria-pressed="${i.status===s}">${STATUS[s].short}</button>`).join("")}
       </div>
+      <div class="photo-line">
+        ${ i.img
+          ? `<button class="pbtn on" data-photo="show">
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="m21 15-5-5L5 21"/></svg>
+               הצג תמונה</button>`
+          : `<button class="pbtn" data-photo="add">
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L8 6H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-4l-1.5-2Z"/><circle cx="12" cy="13" r="3.2"/></svg>
+               הוסף תמונה</button>` }
+      </div>
     </div>
     <button class="del" aria-label="מחיקת ${esc(i.name)}">×</button>
   </div>`;
@@ -1179,9 +1223,49 @@ function wireItems(){
       if (it.status==="done" && it.actual==null) it.actual = it.est;
       commit();
     });
+    const pb = $("[data-photo]", el);
+    if (pb) pb.addEventListener("click", ()=>{
+      if (pb.dataset.photo==="show") openLightbox(id);
+      else pickPhoto(id);
+    });
     $(".del", el).addEventListener("click", ()=>{ state.items = state.items.filter(x=>x.id!==id); commit(); toast("הפריט נמחק"); });
   });
 }
+
+/* ---- item photo: pick, compress, view ---------------------------------
+   The picked photo is downscaled and JPEG-compressed on a canvas before it
+   ever touches the state, so a phone snapshot becomes a few dozen KB that
+   sync cheaply. The picture stays hidden behind a button until asked for. */
+let pendingPhotoId = null, lightItemId = null;
+function pickPhoto(id){ pendingPhotoId = id; const inp=$("#photoInput"); inp.value=""; inp.click(); }
+function compressImage(file, maxEdge, quality){
+  return new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onerror=reject;
+    fr.onload=()=>{
+      const img=new Image();
+      img.onerror=reject;
+      img.onload=()=>{
+        let w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+        const k=Math.min(1, maxEdge/Math.max(w,h));
+        w=Math.max(1,Math.round(w*k)); h=Math.max(1,Math.round(h*k));
+        const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+        cv.getContext("2d").drawImage(img,0,0,w,h);
+        try{ resolve(cv.toDataURL("image/jpeg", quality)); }catch(e){ reject(e); }
+      };
+      img.src=fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+function openLightbox(id){
+  const it=state.items.find(x=>x.id===id);
+  if (!it || !it.img) return;
+  lightItemId=id;
+  $("#lbImg").src=it.img;
+  $("#lightbox").classList.add("on");
+}
+function closeLightbox(){ $("#lightbox").classList.remove("on"); lightItemId=null; }
 function addItemTo(roomId){
   state.seq = (state.seq||0)+1;
   const fresh = { id:"i"+state.seq+"_"+Date.now().toString(36), room:roomId,
@@ -2813,7 +2897,30 @@ $("#fab").addEventListener("click", ()=>{
 $("#settingsTab").addEventListener("click", openSettings);
 $("#scrim").addEventListener("click", closeSheet);
 $("#shClose").addEventListener("click", closeSheet);
-document.addEventListener("keydown", e=>{ if (e.key==="Escape") closeSheet(); });
+document.addEventListener("keydown", e=>{ if (e.key==="Escape"){ if ($("#lightbox").classList.contains("on")) closeLightbox(); else closeSheet(); } });
+
+/* item-photo wiring */
+$("#photoInput").addEventListener("change", async e=>{
+  const f = e.target.files && e.target.files[0];
+  if (!f || !pendingPhotoId){ pendingPhotoId=null; return; }
+  const it = state.items.find(x=>x.id===pendingPhotoId); pendingPhotoId=null;
+  if (!it) return;
+  toast("מעבד תמונה…");
+  try{
+    it.img = await compressImage(f, 720, 0.7);
+    commit();                                  /* re-renders the sheet + syncs */
+    if (lightItemId===it.id) $("#lbImg").src=it.img;
+    toast("התמונה נוספה");
+  }catch(err){ toast("לא הצלחתי לטעון את התמונה"); }
+});
+$("#lbClose").addEventListener("click", closeLightbox);
+$("#lightbox").addEventListener("click", e=>{ if (e.target === $("#lightbox")) closeLightbox(); });
+$("#lbReplace").addEventListener("click", ()=>{ if (lightItemId) pickPhoto(lightItemId); });
+$("#lbRemove").addEventListener("click", ()=>{
+  const it = lightItemId && state.items.find(x=>x.id===lightItemId);
+  if (!it) return;
+  it.img = null; closeLightbox(); commit(); toast("התמונה הוסרה");
+});
 
 const root = document.documentElement;
 $("#themeBtn").addEventListener("click", ()=>{
