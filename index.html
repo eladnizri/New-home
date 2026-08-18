@@ -347,6 +347,11 @@ input,select{ font:inherit; color:inherit; }
   width:44px; height:44px; border-radius:50%; display:grid; place-items:center;
   background: rgba(255,255,255,.18); color:#fff; }
 .lb-x:active{ transform: scale(.94); }
+.lb-thumbs{ display:flex; gap:9px; }
+.lb-th{ width:54px; height:54px; border-radius:11px; overflow:hidden; flex:none;
+  box-shadow: 0 0 0 2px transparent; opacity:.6; transition: opacity .15s; }
+.lb-th img{ width:100%; height:100%; object-fit:cover; display:block; }
+.lb-th.on{ opacity:1; box-shadow: 0 0 0 2.5px var(--brand); }
 .lb-tools{ display:flex; gap:10px; }
 
 .btn{ background: var(--brand); color: var(--brand-ink); border-radius: var(--r-pill); padding:12px 20px; font-size:14.5px; font-weight:700; }
@@ -650,8 +655,9 @@ body.viewing3d .tabbar{ display:none; }
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
   </button>
   <img id="lbImg" alt="דגם לקנייה">
+  <div class="lb-thumbs" id="lbThumbs" hidden></div>
   <div class="lb-tools">
-    <button class="btn ghost sm" id="lbReplace">החלף תמונה</button>
+    <button class="btn ghost sm" id="lbAdd">הוסף תמונה</button>
     <button class="btn ghost sm" id="lbRemove" style="color:var(--d-buy)">הסר תמונה</button>
   </div>
 </div>
@@ -778,6 +784,7 @@ const clamp = (v,a,b)=> Math.max(a, Math.min(b, v));
 const KEY = "newhome.plan.v3";
 const THEME_KEY = "newhome.theme";
 const GEN = "__gen";   /* pseudo-room for expenses not tied to a room */
+const MAX_IMGS = 3;    /* photos of a model, per item */
 const GEN_SEED = [
   ["הובלה",2500,"buy"], ["צביעת הדירה",3000,"buy"], ["חשמלאי",1500,"buy"],
   ["אינסטלטור",1000,"buy"], ["הרכבות והתקנות",2000,"buy"], ["וילונות ומסילות",1800,"buy"],
@@ -829,9 +836,13 @@ function normalize(s){
     est: Math.max(0, +i.est||0),
     actual: i.actual==null ? null : Math.max(0, +i.actual||0),
     status: STATUS[i.status] ? i.status : "buy",
-    /* optional photo of the model the user wants to buy — a compressed
-       data: URI, carried in the state blob so the family sees it too */
-    img: (typeof i.img === "string" && i.img.slice(0,5) === "data:") ? i.img : null
+    /* up to three photos of the model the user wants to buy — compressed
+       data: URIs, carried in the state blob so the family sees them too.
+       Older saves held a single `img`; fold it into the array. */
+    imgs: (()=>{
+      const src = Array.isArray(i.imgs) ? i.imgs : (i.img != null ? [i.img] : []);
+      return src.filter(u=> typeof u==="string" && u.slice(0,5)==="data:").slice(0, MAX_IMGS);
+    })()
   }));
 
   /* room layout plans, keyed by room id; anything malformed is dropped */
@@ -1188,10 +1199,10 @@ function itemHTML(i){
         ${Object.keys(STATUS).map(s=>`<button data-s="${s}" aria-pressed="${i.status===s}">${STATUS[s].short}</button>`).join("")}
       </div>
       <div class="photo-line">
-        ${ i.img
+        ${ (i.imgs && i.imgs.length)
           ? `<button class="pbtn on" data-photo="show">
                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="m21 15-5-5L5 21"/></svg>
-               הצג תמונה</button>`
+               הצג ${ i.imgs.length>1 ? `תמונות · ${i.imgs.length}` : "תמונה" }</button>`
           : `<button class="pbtn" data-photo="add">
                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L8 6H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-4l-1.5-2Z"/><circle cx="12" cy="13" r="3.2"/></svg>
                הוסף תמונה</button>` }
@@ -1232,11 +1243,13 @@ function wireItems(){
   });
 }
 
-/* ---- item photo: pick, compress, view ---------------------------------
-   The picked photo is downscaled and JPEG-compressed on a canvas before it
-   ever touches the state, so a phone snapshot becomes a few dozen KB that
-   sync cheaply. The picture stays hidden behind a button until asked for. */
-let pendingPhotoId = null, lightItemId = null;
+/* ---- item photos: pick, compress, view --------------------------------
+   Up to three photos per item. Each picked photo is downscaled and JPEG-
+   compressed on a canvas before it ever touches the state, so a phone
+   snapshot becomes a few dozen KB that sync cheaply. The photos stay hidden
+   behind a button until asked for, then open in a small gallery. */
+let pendingPhotoId = null, lightItemId = null, lightIdx = 0;
+function itemImgs(it){ return (it && it.imgs) || []; }
 function pickPhoto(id){ pendingPhotoId = id; const inp=$("#photoInput"); inp.value=""; inp.click(); }
 function compressImage(file, maxEdge, quality){
   return new Promise((resolve,reject)=>{
@@ -1260,10 +1273,23 @@ function compressImage(file, maxEdge, quality){
 }
 function openLightbox(id){
   const it=state.items.find(x=>x.id===id);
-  if (!it || !it.img) return;
-  lightItemId=id;
-  $("#lbImg").src=it.img;
+  if (!it || !itemImgs(it).length) return;
+  lightItemId=id; lightIdx=0;
+  renderLightbox();
   $("#lightbox").classList.add("on");
+}
+function renderLightbox(){
+  const it = state.items.find(x=>x.id===lightItemId);
+  const imgs = itemImgs(it);
+  if (!it || !imgs.length){ closeLightbox(); return; }
+  lightIdx = clamp(lightIdx, 0, imgs.length-1);
+  $("#lbImg").src = imgs[lightIdx];
+  const strip = $("#lbThumbs");
+  strip.hidden = imgs.length < 2;
+  strip.innerHTML = imgs.map((src,i)=>
+    `<button class="lb-th ${i===lightIdx?'on':''}" data-i="${i}"><img src="${src}" alt=""></button>`).join("");
+  $$("#lbThumbs .lb-th").forEach(b=> b.addEventListener("click", ()=>{ lightIdx=+b.dataset.i; renderLightbox(); }));
+  $("#lbAdd").hidden = imgs.length >= MAX_IMGS;
 }
 function closeLightbox(){ $("#lightbox").classList.remove("on"); lightItemId=null; }
 function addItemTo(roomId){
@@ -2905,21 +2931,27 @@ $("#photoInput").addEventListener("change", async e=>{
   if (!f || !pendingPhotoId){ pendingPhotoId=null; return; }
   const it = state.items.find(x=>x.id===pendingPhotoId); pendingPhotoId=null;
   if (!it) return;
+  if (!Array.isArray(it.imgs)) it.imgs = [];
+  if (it.imgs.length >= MAX_IMGS){ toast(`אפשר עד ${MAX_IMGS} תמונות`); return; }
   toast("מעבד תמונה…");
   try{
-    it.img = await compressImage(f, 720, 0.7);
+    it.imgs.push(await compressImage(f, 720, 0.7));
+    lightIdx = it.imgs.length - 1;
     commit();                                  /* re-renders the sheet + syncs */
-    if (lightItemId===it.id) $("#lbImg").src=it.img;
+    if (lightItemId===it.id) renderLightbox();
     toast("התמונה נוספה");
   }catch(err){ toast("לא הצלחתי לטעון את התמונה"); }
 });
 $("#lbClose").addEventListener("click", closeLightbox);
 $("#lightbox").addEventListener("click", e=>{ if (e.target === $("#lightbox")) closeLightbox(); });
-$("#lbReplace").addEventListener("click", ()=>{ if (lightItemId) pickPhoto(lightItemId); });
+$("#lbAdd").addEventListener("click", ()=>{ if (lightItemId) pickPhoto(lightItemId); });
 $("#lbRemove").addEventListener("click", ()=>{
   const it = lightItemId && state.items.find(x=>x.id===lightItemId);
-  if (!it) return;
-  it.img = null; closeLightbox(); commit(); toast("התמונה הוסרה");
+  if (!it || !itemImgs(it).length) return;
+  it.imgs.splice(lightIdx, 1);
+  commit();                                    /* re-renders the item row */
+  if (it.imgs.length){ renderLightbox(); toast("התמונה הוסרה"); }
+  else { closeLightbox(); toast("התמונה הוסרה"); }
 });
 
 const root = document.documentElement;
